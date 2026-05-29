@@ -1,0 +1,12 @@
+.env.local
+.env*.local
+node_modules/
+.next/
+.vercel/
+_deploy_clean/
+dev-server*.log
+base_excel/
+Base_Excel/
+version_inicio_git/
+vercel_static/
+BrandBook - Formatto/

@@ -1,0 +1,3 @@
+-- Seed opcional.
+-- La app funciona en modo demo con assets/js/data.js si Supabase esta vacio.
+-- Para produccion, primero ejecuta schema.sql y luego usa el CRUD o la importacion Excel.

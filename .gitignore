@@ -1,0 +1,15 @@
+.next/
+node_modules/
+dev-server*.log
+.env.local
+.env*.local
+npm-debug.log*
+
+.vercel
+Base_Excel/
+base_excel/
+_deploy_clean/
+_github_clean/
+BrandBook - Formatto/
+version_inicio_git/
+vercel_static/
