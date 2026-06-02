@@ -161,6 +161,29 @@ export default function Home() {
           </div>
 
           <div className="admin-card">
+            <div className="admin-card-title">Asignacion de personal</div>
+            <div className="admin-row">
+              <div className="admin-field"><label>Buscar</label><input id="assignmentSearch" placeholder="Nombre, cargo o supervisor" /></div>
+              <div className="admin-field"><label>Obra</label><select id="assignmentObraFilter"><option value="">Todas</option></select></div>
+              <div className="admin-field"><label>Fecha efectiva</label><input id="assignmentDate" type="date" /></div>
+              <div className="admin-field"><label>Destino</label><select id="assignmentTargetSelect"><option value="">Arrastra o elige destino</option></select></div>
+            </div>
+            <div className="assignment-board" id="assignmentBoard" />
+            <div className="assignment-confirm" id="assignmentConfirm">
+              <div className="assignment-confirm-title">Confirmar movimiento</div>
+              <div className="assignment-confirm-copy" id="assignmentConfirmCopy">Arrastra un trabajador a otra obra para preparar el cambio.</div>
+              <div className="admin-row">
+                <div className="admin-field"><label>Supervisor destino</label><input id="assignmentSupervisor" /></div>
+                <div className="admin-field"><label>Fecha efectiva</label><input id="assignmentConfirmDate" type="date" /></div>
+              </div>
+              <div className="admin-actions">
+                <button className="admin-btn" id="assignmentSaveBtn" type="button">Confirmar</button>
+                <button className="admin-btn secondary" id="assignmentCancelBtn" type="button">Cancelar</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-card">
             <div className="admin-card-title">Subcontrato</div>
             <div className="admin-row">
               <div className="admin-field"><label>Obra</label><input id="subObra" /></div>

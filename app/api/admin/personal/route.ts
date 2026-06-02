@@ -31,3 +31,40 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ data });
 }
+
+export async function PATCH(request: Request) {
+  const auth = await requireAdmin(request);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  const body = await request.json();
+  if (!body.id || !body.obra) {
+    return NextResponse.json({ error: "Trabajador y obra destino son obligatorios." }, { status: 400 });
+  }
+
+  const targetObra = String(body.obra).trim();
+  const { data: obra, error: obraError } = await auth.admin
+    .from("obras")
+    .select("id,nombre,supervisor")
+    .eq("nombre", targetObra)
+    .maybeSingle();
+
+  if (obraError) return NextResponse.json({ error: obraError.message }, { status: 400 });
+  if (!obra) return NextResponse.json({ error: "La obra destino no existe." }, { status: 404 });
+
+  const payload = {
+    obra_id: obra.id,
+    obra_nombre: obra.nombre,
+    supervisor: body.supervisor ? String(body.supervisor).trim() : obra.supervisor,
+    desde: body.desde ? String(body.desde) : null
+  };
+
+  const { data, error } = await auth.admin
+    .from("personal")
+    .update(payload)
+    .eq("id", String(body.id))
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ data });
+}

@@ -1045,11 +1045,130 @@ async function adminFetch(url,options={}){
 async function reloadAfterWrite(message){
   await hydrateTimelineDataFromApi();
   resetDropdowns();
+  renderAssignmentBoard();
   refreshAll();
   setAdminStatus(message,false);
 }
 
 function val(id){return document.getElementById(id)?.value?.trim()||'';}
+
+function dateInputValue(date){
+  const d=date instanceof Date?date:new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+let pendingAssignmentMove=null;
+
+function getObraSupervisorName(obraName){
+  return ESTADOS_MAP[obraName]?.supervisor || PERSONAL.find(p=>p.obra===obraName)?.supervisor || '';
+}
+
+function getAssignmentObras(){
+  return [...new Set([...Object.keys(ESTADOS_MAP),...getAllObraNames()])].sort();
+}
+
+function fillAssignmentControls(){
+  const obraFilter=document.getElementById('assignmentObraFilter');
+  const targetSelect=document.getElementById('assignmentTargetSelect');
+  if(!obraFilter||!targetSelect)return;
+  const obras=getAssignmentObras();
+  const currentFilter=obraFilter.value;
+  const currentTarget=targetSelect.value;
+  obraFilter.innerHTML='<option value="">Todas</option>'+obras.map(o=>`<option value="${o}">${o}</option>`).join('');
+  targetSelect.innerHTML='<option value="">Arrastra o elige destino</option>'+obras.map(o=>`<option value="${o}">${o}</option>`).join('');
+  if(obras.includes(currentFilter))obraFilter.value=currentFilter;
+  if(obras.includes(currentTarget))targetSelect.value=currentTarget;
+  const assignmentDate=document.getElementById('assignmentDate');
+  const confirmDate=document.getElementById('assignmentConfirmDate');
+  const today=dateInputValue(TODAY);
+  if(assignmentDate&&!assignmentDate.value)assignmentDate.value=today;
+  if(confirmDate&&!confirmDate.value)confirmDate.value=assignmentDate?.value||today;
+}
+
+function renderAssignmentBoard(){
+  const board=document.getElementById('assignmentBoard');
+  if(!board)return;
+  fillAssignmentControls();
+  const search=val('assignmentSearch').toLowerCase();
+  const obraFilter=val('assignmentObraFilter');
+  const obras=getAssignmentObras().filter(obra=>!obraFilter||obra===obraFilter);
+  const people=PERSONAL.filter(p=>{
+    const haystack=`${p.nombre||''} ${p.cargo||''} ${p.supervisor||''} ${p.obra||''}`.toLowerCase();
+    return !search||haystack.includes(search);
+  });
+  const groups=new Map(obras.map(obra=>[obra,[]]));
+  people.forEach(p=>{
+    if(groups.has(p.obra))groups.get(p.obra).push(p);
+  });
+  board.innerHTML=obras.map(obra=>{
+    const list=groups.get(obra)||[];
+    const sorted=[...list].sort((a,b)=>String(a.nombre).localeCompare(String(b.nombre),'es'));
+    return `<div class="assignment-column" data-assignment-obra="${obra}">
+      <div class="assignment-column-head">
+        <div class="assignment-column-title">${obra}</div>
+        <div class="assignment-column-count">${sorted.length} pers.</div>
+      </div>
+      <div class="assignment-list">
+        ${sorted.length?sorted.map(p=>`<div class="assignment-person" draggable="true" data-person-id="${p.id}">
+          <div class="assignment-person-name">${p.nombre}</div>
+          <div class="assignment-person-meta">${p.cargo||'Sin cargo'} · Sup. ${p.supervisor||'Sin sup.'}</div>
+          <div class="assignment-person-cost">${fmtCLP(p.costo||0)} · ${p.cant||1}p</div>
+        </div>`).join(''):'<div class="assignment-empty">Sin personal asignado.</div>'}
+      </div>
+    </div>`;
+  }).join('');
+  bindAssignmentDrag();
+}
+
+function bindAssignmentDrag(){
+  document.querySelectorAll('.assignment-person').forEach(card=>{
+    card.addEventListener('dragstart',e=>{
+      card.classList.add('dragging');
+      e.dataTransfer.setData('text/plain',card.dataset.personId||'');
+      e.dataTransfer.effectAllowed='move';
+    });
+    card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+  });
+  document.querySelectorAll('.assignment-column').forEach(col=>{
+    col.addEventListener('dragover',e=>{e.preventDefault();col.classList.add('drop-ready');});
+    col.addEventListener('dragleave',()=>col.classList.remove('drop-ready'));
+    col.addEventListener('drop',e=>{
+      e.preventDefault();
+      col.classList.remove('drop-ready');
+      const id=e.dataTransfer.getData('text/plain');
+      const target=col.dataset.assignmentObra;
+      openAssignmentConfirm(id,target);
+    });
+  });
+}
+
+function openAssignmentConfirm(personId,targetObra){
+  const person=PERSONAL.find(p=>String(p.id)===String(personId));
+  if(!person||!targetObra)return;
+  if(person.obra===targetObra){
+    setAdminStatus('El trabajador ya esta en esa obra.',true);
+    return;
+  }
+  pendingAssignmentMove={personId:person.id,fromObra:person.obra,targetObra};
+  const confirm=document.getElementById('assignmentConfirm');
+  const copy=document.getElementById('assignmentConfirmCopy');
+  const supervisor=document.getElementById('assignmentSupervisor');
+  const confirmDate=document.getElementById('assignmentConfirmDate');
+  const targetSelect=document.getElementById('assignmentTargetSelect');
+  if(targetSelect)targetSelect.value=targetObra;
+  if(supervisor)supervisor.value=getObraSupervisorName(targetObra)||person.supervisor||'';
+  if(confirmDate)confirmDate.value=val('assignmentDate')||dateInputValue(TODAY);
+  if(copy)copy.textContent=`${person.nombre} pasara de ${person.obra} a ${targetObra}. El dashboard se actualizara al confirmar.`;
+  confirm?.classList.add('open');
+}
+
+function closeAssignmentConfirm(){
+  pendingAssignmentMove=null;
+  document.getElementById('assignmentConfirm')?.classList.remove('open');
+}
 
 function bindAdmin(){
   document.getElementById('adminOpenBtn')?.addEventListener('click',()=>document.getElementById('adminPanel')?.classList.add('open'));
@@ -1097,6 +1216,28 @@ function bindAdmin(){
       await reloadAfterWrite('Personal agregado.');
     }catch(err){setAdminStatus(err.message,true);}
   });
+  document.getElementById('assignmentSearch')?.addEventListener('input',renderAssignmentBoard);
+  document.getElementById('assignmentObraFilter')?.addEventListener('change',renderAssignmentBoard);
+  document.getElementById('assignmentTargetSelect')?.addEventListener('change',()=>{
+    if(!pendingAssignmentMove)return;
+    const target=val('assignmentTargetSelect');
+    if(target)openAssignmentConfirm(pendingAssignmentMove.personId,target);
+  });
+  document.getElementById('assignmentCancelBtn')?.addEventListener('click',closeAssignmentConfirm);
+  document.getElementById('assignmentSaveBtn')?.addEventListener('click',async()=>{
+    try{
+      if(!pendingAssignmentMove)throw new Error('Arrastra un trabajador a una obra destino.');
+      await adminFetch('/api/admin/personal',{method:'PATCH',body:JSON.stringify({
+        id:pendingAssignmentMove.personId,
+        obra:pendingAssignmentMove.targetObra,
+        supervisor:val('assignmentSupervisor'),
+        desde:val('assignmentConfirmDate')
+      })});
+      const target=pendingAssignmentMove.targetObra;
+      closeAssignmentConfirm();
+      await reloadAfterWrite(`Trabajador movido a ${target}.`);
+    }catch(err){setAdminStatus(err.message,true);}
+  });
   document.getElementById('saveSubBtn')?.addEventListener('click',async()=>{
     try{
       await adminFetch('/api/admin/subcontratos',{method:'POST',body:JSON.stringify({
@@ -1140,6 +1281,7 @@ async function initTimelineApp(){
   bindAdmin();
   await hydrateTimelineDataFromApi();
   buildDropdowns();
+  renderAssignmentBoard();
   renderSubcontratos();
   renderKPIs();
   renderTimeline();

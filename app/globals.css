@@ -82,6 +82,24 @@
 .admin-status{font-size:9px;color:var(--bark);line-height:1.35;}
 .admin-status.error{color:var(--rojo);font-weight:700;}
 .admin-preview{max-height:180px;overflow:auto;border:1px solid var(--border);background:var(--white);padding:8px;font-size:9px;color:var(--umber);white-space:pre-wrap;}
+.assignment-board{display:grid;grid-template-columns:1fr;gap:8px;max-height:360px;overflow:auto;padding-right:2px;}
+.assignment-column{border:1px solid var(--border);background:var(--white);}
+.assignment-column.drop-ready{border-color:var(--rojo);box-shadow:inset 0 0 0 1px var(--rojo);}
+.assignment-column-head{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:7px 8px;border-bottom:1px solid var(--border);background:var(--faint);}
+.assignment-column-title{font-size:9px;font-weight:700;color:var(--grafito);line-height:1.2;}
+.assignment-column-count{font-size:8px;color:var(--bark);white-space:nowrap;}
+.assignment-list{min-height:42px;padding:6px;display:flex;flex-direction:column;gap:5px;}
+.assignment-empty{font-size:8px;color:var(--bark);padding:4px 2px;}
+.assignment-person{border:1px solid var(--sand);background:var(--white);padding:7px;cursor:grab;border-left:3px solid var(--rojo);}
+.assignment-person:active{cursor:grabbing;}
+.assignment-person.dragging{opacity:0.55;}
+.assignment-person-name{font-size:10px;font-weight:700;color:var(--grafito);line-height:1.2;}
+.assignment-person-meta{font-size:8px;color:var(--bark);line-height:1.35;margin-top:2px;}
+.assignment-person-cost{font-size:8px;color:var(--umber);font-weight:700;margin-top:2px;}
+.assignment-confirm{display:none;margin-top:8px;border:1px solid var(--grafito);background:var(--white);padding:10px;}
+.assignment-confirm.open{display:block;}
+.assignment-confirm-title{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--grafito);margin-bottom:5px;}
+.assignment-confirm-copy{font-size:9px;color:var(--bark);line-height:1.35;margin-bottom:8px;}
 
 @media (max-width: 560px){
   .admin-panel{width:100vw;}
