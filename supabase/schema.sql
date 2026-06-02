@@ -45,6 +45,18 @@ create table if not exists public.configuracion (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.personal_movimientos (
+  id uuid primary key default gen_random_uuid(),
+  personal_id uuid references public.personal(id) on delete set null,
+  tipo text not null check (tipo in ('reasignacion','desvinculacion')),
+  obra_origen text,
+  obra_destino text,
+  fecha date not null,
+  motivo text,
+  admin_email text,
+  created_at timestamptz not null default now()
+);
+
 insert into public.configuracion(key, value)
 values ('cutoffDate', '2026-05-27')
 on conflict (key) do nothing;
@@ -79,6 +91,7 @@ alter table public.obras enable row level security;
 alter table public.personal enable row level security;
 alter table public.subcontratos enable row level security;
 alter table public.configuracion enable row level security;
+alter table public.personal_movimientos enable row level security;
 
 drop policy if exists "authenticated read obras" on public.obras;
 create policy "authenticated read obras" on public.obras
@@ -111,6 +124,10 @@ for select to authenticated using (true);
 drop policy if exists "anon read configuracion" on public.configuracion;
 create policy "anon read configuracion" on public.configuracion
 for select to anon using (true);
+
+drop policy if exists "authenticated read personal_movimientos" on public.personal_movimientos;
+create policy "authenticated read personal_movimientos" on public.personal_movimientos
+for select to authenticated using (true);
 
 -- Writes are performed by Next.js route handlers with SUPABASE_SERVICE_ROLE_KEY
 -- after validating the logged-in user's email against ADMIN_EMAILS.

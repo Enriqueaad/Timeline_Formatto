@@ -158,6 +158,32 @@ export default function Home() {
         </div>
       </div>
 
+      <div className="assignment-modal-overlay" id="assignmentModalOverlay">
+        <div className="assignment-modal">
+          <div className="assignment-modal-head">
+            <div>
+              <div className="assignment-modal-title" id="assignmentModalTitle">Confirmar movimiento</div>
+              <div className="assignment-modal-copy" id="assignmentModalCopy">Selecciona una accion para continuar.</div>
+            </div>
+            <button className="assignment-modal-close" id="assignmentModalCancelBtn" type="button">×</button>
+          </div>
+          <div className="assignment-modal-body">
+            <div className="admin-row">
+              <div className="admin-field" id="assignmentModalSupervisorWrap"><label>Supervisor destino</label><input id="assignmentModalSupervisor" /></div>
+              <div className="admin-field"><label>Fecha efectiva</label><input id="assignmentModalDate" type="date" /></div>
+            </div>
+            <div className="admin-field" id="assignmentModalReasonWrap">
+              <label>Motivo</label>
+              <textarea id="assignmentModalReason" placeholder="Motivo u observacion" />
+            </div>
+            <div className="admin-actions" style={{ marginTop: 10 }}>
+              <button className="admin-btn" id="assignmentModalSaveBtn" type="button">Confirmar</button>
+              <button className="admin-btn secondary" id="assignmentModalSecondaryCancelBtn" type="button">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <aside className="admin-panel" id="adminPanel">
         <div className="admin-head">
           <div>

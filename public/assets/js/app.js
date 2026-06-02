@@ -54,6 +54,7 @@ const filters = {obras:null, sups:null, estados:null};
 
 function getFiltered(){
   return PERSONAL.filter(p=>{
+    if(Number(p.cant||0)<=0)return false;
     return passesObraFilters(p.obra,p.supervisor,getEstadoForObra(p.obra));
   });
 }
@@ -61,6 +62,7 @@ function getFiltered(){
 function getObras(refDate=TODAY){
   const map={};
   PERSONAL.forEach(p=>{
+    if(Number(p.cant||0)<=0)return;
     if(!passesObraFilters(p.obra,p.supervisor,getEstadoForObra(p.obra)))return;
     // If 'desde' is defined and refDate is before it, skip for count purposes
     const activeAtRef=!refDate||!p.desde||(refDate>=p.desde);
@@ -954,7 +956,13 @@ function renderEval(){
       <span style="font-size:8px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:var(--bark);">Resumen Global — ${totalEval} personas</span>
       <div class="eval-resumen-counts">${countsHtml}</div>
     </div>
-    <div>${chipsHtml}</div>`;
+    <div>${chipsHtml}</div>
+    <div class="eval-operation-row">
+      <div class="eval-unlink-drop" id="evalUnlinkDrop">
+        <div class="eval-unlink-title">Desvincular</div>
+        <div class="eval-unlink-copy">Arrastra aqui a una persona para sacarla de dotacion activa con fecha y motivo.</div>
+      </div>
+    </div>`;
 
   // Cards — equal height via minHeight
   const CARD_ROW_H=32; // px per person row
@@ -967,7 +975,7 @@ function renderEval(){
     activePers.forEach(p=>{if(ec[p.eval]!==undefined)ec[p.eval]++;});
     const emptyN=maxP-sorted.length; // sorted is from activePers
     const rows=sorted.map(p=>`
-      <div class="eval-row">
+      <div class="eval-row" draggable="true" data-person-id="${p.id||''}">
         <div class="eval-badge-tag" style="background:${EVAL_COLORS[p.eval]}">${p.eval}</div>
         <div><div class="eval-person-name">${p.nombre}</div><div class="eval-cargo">${p.cargo}</div></div>
       </div>`).join('')+
@@ -978,7 +986,7 @@ function renderEval(){
         <div class="eval-stat-lbl" style="color:${EVAL_COLORS[k]}">${k}</div>
       </div>`).join('');
     const obraId='card_'+o.obra.replace(/[^a-zA-Z0-9]/g,'_');
-    return`<div class="eval-card" id="${obraId}" style="min-height:${CARD_FIXED_H}px;">
+    return`<div class="eval-card" id="${obraId}" data-assignment-obra="${o.obra}" style="min-height:${CARD_FIXED_H}px;">
       <div class="eval-card-header">
         <div class="eval-obra-name">${o.obra}</div>
         <div class="eval-sup">Sup. ${o.supervisor} · ${o.totalCant} pers.</div>
@@ -989,6 +997,7 @@ function renderEval(){
   }).join('');
 
   document.getElementById('evalCardsGrid').innerHTML=cardsHtml;
+  bindControlAssignmentDrag();
 }
 
 function scrollToCard(obraName,chipEl){
@@ -1129,6 +1138,7 @@ function dateInputValue(date){
 }
 
 let pendingAssignmentMove=null;
+let pendingUnlinkMove=null;
 
 function getObraSupervisorName(obraName){
   return ESTADOS_MAP[obraName]?.supervisor || PERSONAL.find(p=>p.obra===obraName)?.supervisor || '';
@@ -1213,6 +1223,45 @@ function bindAssignmentDrag(){
   });
 }
 
+function bindControlAssignmentDrag(){
+  document.querySelectorAll('#panelEval .eval-row[draggable="true"]').forEach(row=>{
+    row.addEventListener('dragstart',e=>{
+      row.classList.add('dragging');
+      e.dataTransfer.setData('text/plain',row.dataset.personId||'');
+      e.dataTransfer.effectAllowed='move';
+    });
+    row.addEventListener('dragend',()=>row.classList.remove('dragging'));
+  });
+  document.querySelectorAll('#panelEval .eval-card[data-assignment-obra]').forEach(card=>{
+    card.addEventListener('dragover',e=>{
+      e.preventDefault();
+      card.classList.add('drop-ready');
+    });
+    card.addEventListener('dragleave',()=>card.classList.remove('drop-ready'));
+    card.addEventListener('drop',e=>{
+      e.preventDefault();
+      card.classList.remove('drop-ready');
+      const id=e.dataTransfer.getData('text/plain');
+      const target=card.dataset.assignmentObra;
+      openAssignmentConfirm(id,target);
+    });
+  });
+  const unlink=document.getElementById('evalUnlinkDrop');
+  if(unlink){
+    unlink.addEventListener('dragover',e=>{
+      e.preventDefault();
+      unlink.classList.add('drop-ready');
+    });
+    unlink.addEventListener('dragleave',()=>unlink.classList.remove('drop-ready'));
+    unlink.addEventListener('drop',e=>{
+      e.preventDefault();
+      unlink.classList.remove('drop-ready');
+      const id=e.dataTransfer.getData('text/plain');
+      openUnlinkConfirm(id);
+    });
+  }
+}
+
 function openAssignmentConfirm(personId,targetObra){
   const person=PERSONAL.find(p=>String(p.id)===String(personId));
   if(!person||!targetObra)return;
@@ -1231,11 +1280,78 @@ function openAssignmentConfirm(personId,targetObra){
   if(confirmDate)confirmDate.value=val('assignmentDate')||dateInputValue(TODAY);
   if(copy)copy.textContent=`${person.nombre} pasara de ${person.obra} a ${targetObra}. El dashboard se actualizara al confirmar.`;
   confirm?.classList.add('open');
+  openAssignmentModal({
+    type:'move',
+    title:'Confirmar reasignacion',
+    copy:`${person.nombre} pasara de ${person.obra} a ${targetObra}. El dashboard se actualizara al confirmar.`,
+    supervisor:getObraSupervisorName(targetObra)||person.supervisor||'',
+    date:val('assignmentDate')||dateInputValue(TODAY)
+  });
 }
 
 function closeAssignmentConfirm(){
   pendingAssignmentMove=null;
   document.getElementById('assignmentConfirm')?.classList.remove('open');
+}
+
+function openUnlinkConfirm(personId){
+  const person=PERSONAL.find(p=>String(p.id)===String(personId));
+  if(!person)return;
+  pendingAssignmentMove=null;
+  pendingUnlinkMove={personId:person.id,fromObra:person.obra};
+  openAssignmentModal({
+    type:'unlink',
+    title:'Confirmar desvinculacion',
+    copy:`${person.nombre} saldra de la dotacion activa. Se conserva el registro base y deja de sumar en dashboard desde la fecha indicada.`,
+    date:dateInputValue(TODAY)
+  });
+}
+
+function openAssignmentModal({type,title,copy,supervisor='',date=''}) {
+  const overlay=document.getElementById('assignmentModalOverlay');
+  if(!overlay)return;
+  document.getElementById('assignmentModalTitle').textContent=title;
+  document.getElementById('assignmentModalCopy').textContent=copy;
+  document.getElementById('assignmentModalSupervisor').value=supervisor;
+  document.getElementById('assignmentModalDate').value=date||dateInputValue(TODAY);
+  document.getElementById('assignmentModalReason').value='';
+  document.getElementById('assignmentModalSupervisorWrap').style.display=type==='move'?'flex':'none';
+  document.getElementById('assignmentModalReasonWrap').style.display=type==='unlink'?'flex':'none';
+  overlay.classList.add('open');
+}
+
+function closeAssignmentModal(){
+  pendingAssignmentMove=null;
+  pendingUnlinkMove=null;
+  document.getElementById('assignmentModalOverlay')?.classList.remove('open');
+  closeAssignmentConfirm();
+}
+
+async function commitPendingPersonnelAction(){
+  if(pendingAssignmentMove){
+    const target=pendingAssignmentMove.targetObra;
+    await adminFetch('/api/admin/personal',{method:'PATCH',body:JSON.stringify({
+      id:pendingAssignmentMove.personId,
+      obra:target,
+      supervisor:val('assignmentModalSupervisor')||val('assignmentSupervisor'),
+      desde:val('assignmentModalDate')||val('assignmentConfirmDate')
+    })});
+    closeAssignmentModal();
+    await reloadAfterWrite(`Trabajador movido a ${target}.`);
+    return;
+  }
+  if(pendingUnlinkMove){
+    await adminFetch('/api/admin/personal',{method:'PATCH',body:JSON.stringify({
+      action:'unlink',
+      id:pendingUnlinkMove.personId,
+      fecha:val('assignmentModalDate'),
+      motivo:val('assignmentModalReason')
+    })});
+    closeAssignmentModal();
+    await reloadAfterWrite('Trabajador desvinculado de dotacion activa.');
+    return;
+  }
+  throw new Error('No hay movimiento pendiente.');
 }
 
 function bindAdmin(){
@@ -1292,18 +1408,20 @@ function bindAdmin(){
   document.getElementById('assignmentCancelBtn')?.addEventListener('click',closeAssignmentConfirm);
   document.getElementById('assignmentSaveBtn')?.addEventListener('click',async()=>{
     try{
-      if(!pendingAssignmentMove)throw new Error('Arrastra un trabajador a una obra destino.');
-      await adminFetch('/api/admin/personal',{method:'PATCH',body:JSON.stringify({
-        id:pendingAssignmentMove.personId,
-        obra:pendingAssignmentMove.targetObra,
-        supervisor:val('assignmentSupervisor'),
-        desde:val('assignmentConfirmDate')
-      })});
-      const target=pendingAssignmentMove.targetObra;
-      closeAssignmentConfirm();
-      await reloadAfterWrite(`Trabajador movido a ${target}.`);
+      if(pendingAssignmentMove){
+        document.getElementById('assignmentModalSupervisor').value=val('assignmentSupervisor');
+        document.getElementById('assignmentModalDate').value=val('assignmentConfirmDate');
+      }
+      await commitPendingPersonnelAction();
     }catch(err){setAdminStatus(err.message,true);}
   });
+  document.getElementById('assignmentModalSaveBtn')?.addEventListener('click',async()=>{
+    try{
+      await commitPendingPersonnelAction();
+    }catch(err){setAdminStatus(err.message,true);}
+  });
+  document.getElementById('assignmentModalCancelBtn')?.addEventListener('click',closeAssignmentModal);
+  document.getElementById('assignmentModalSecondaryCancelBtn')?.addEventListener('click',closeAssignmentModal);
   document.getElementById('saveSubBtn')?.addEventListener('click',async()=>{
     try{
       await adminFetch('/api/admin/subcontratos',{method:'POST',body:JSON.stringify({
