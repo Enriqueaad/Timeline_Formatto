@@ -166,18 +166,22 @@ document.addEventListener('click',e=>{
 });
 
 // ── TABS ──────────────────────────────────────────────────────────────────
-let currentTab='Timeline';
+let currentTab='Home';
 let currentView='dotacion';
 
 function switchTab(tab,el){
   currentTab=tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
+  const tabEl=el||document.querySelector(`.tab[data-tab="${tab}"]`);
+  tabEl?.classList.add('active');
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel'+tab).classList.add('active');
+  const filterBar=document.getElementById('filterBar');
+  if(filterBar)filterBar.style.display=tab==='Home'?'none':'flex';
   document.getElementById('vistaControls').style.display=tab==='Timeline'?'flex':'none';
   document.getElementById('tlLegend').style.display=tab==='Timeline'?'flex':'none';
-  if(tab==='Timeline') renderTimeline();
+  if(tab==='Home') renderHome();
+  else if(tab==='Timeline') renderTimeline();
   else if(tab==='Costo') renderCosto();
   else renderEval();
 }
@@ -192,7 +196,8 @@ function setView(v,btn){
 function refreshAll(){
   renderKPIs();
   renderSubcontratos();
-  if(currentTab==='Timeline') renderTimeline();
+  if(currentTab==='Home') renderHome();
+  else if(currentTab==='Timeline') renderTimeline();
   else if(currentTab==='Costo') renderCosto();
   else renderEval();
 }
@@ -227,6 +232,36 @@ function renderKPIs(){
 }
 
 // ── SUBCONTRATOS ──────────────────────────────────────────────────────────
+function renderHome(){
+  const obras=getObras();
+  const visibleObras=new Set(obras.map(o=>o.obra));
+  const totalP=obras.reduce((s,o)=>s+o.totalCant,0);
+  const totalC=obras.reduce((s,o)=>s+o.totalCosto,0);
+  const totalSub=SUBCONTRATOS.filter(s=>visibleObras.has(s.obra)&&isActiveSub(s)).reduce((s,x)=>s+x.cant,0);
+  const proy=obras.reduce((sum,o)=>sum+getProjectedCost(o),0);
+  const supervisores=[...new Set(obras.map(o=>o.supervisor).filter(Boolean))].length;
+  const cutoff=document.getElementById('homeCutoff');
+  if(cutoff)cutoff.textContent=fmtDate(TODAY);
+  const grid=document.getElementById('homeSummaryGrid');
+  if(!grid)return;
+  const items=[
+    ['Trabajadores activos',`${totalP}`,'Dotacion Formatto filtrada al corte actual.'],
+    ['Costo mensual',fmtCLP(totalC),'Suma mensual de personal activo.'],
+    ['Costo proyectado',fmtCLP(proy),'Proyeccion segun fechas de termino.'],
+    ['Subcontratos activos',`${totalSub}`,'Dotacion subcontratada actualmente activa.'],
+    ['Obras activas',`${obras.length}`,'Proyectos visibles con los filtros actuales.'],
+    ['Supervisores',`${supervisores}`,'Responsables operativos en vista actual.'],
+    ['Modulo operativo','Control','Asignacion y evaluacion pasan a una vista visual.'],
+    ['Reporte','Costo','Detalle financiero por obra y por mes.']
+  ];
+  grid.innerHTML=items.map(([label,value,note])=>`
+    <div class="home-summary-item">
+      <div class="home-summary-label">${label}</div>
+      <div class="home-summary-value">${value}</div>
+      <div class="home-summary-note">${note}</div>
+    </div>`).join('');
+}
+
 function renderSubcontratos(){
   const visibleObras=new Set(getObras().map(o=>o.obra));
   const activos=SUBCONTRATOS.filter(s=>visibleObras.has(s.obra)&&isActiveSub(s));
@@ -1296,6 +1331,9 @@ function bindTimelineControls(){
   document.querySelectorAll('.tab[data-tab]').forEach(tab=>{
     tab.addEventListener('click',()=>switchTab(tab.dataset.tab,tab));
   });
+  document.querySelectorAll('[data-go-tab]').forEach(btn=>{
+    btn.addEventListener('click',()=>switchTab(btn.dataset.goTab));
+  });
   document.getElementById('msBtnObra')?.addEventListener('click',()=>toggleDD('Obra'));
   document.getElementById('msBtnSup')?.addEventListener('click',()=>toggleDD('Sup'));
   document.getElementById('msBtnEst')?.addEventListener('click',()=>toggleDD('Est'));
@@ -1316,7 +1354,7 @@ async function initTimelineApp(){
   renderAssignmentBoard();
   renderSubcontratos();
   renderKPIs();
-  renderTimeline();
+  renderHome();
 }
 
 initTimelineApp();

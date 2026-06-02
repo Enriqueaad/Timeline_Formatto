@@ -21,9 +21,10 @@ export default function Home() {
       <div className="kpi-bar" id="kpiBar" />
 
       <div className="tabs">
-        <div className="tab active" data-tab="Timeline">Timeline</div>
-        <div className="tab" data-tab="Costo">Costo Proyectado</div>
-        <div className="tab" data-tab="Eval">Evaluacion Personal</div>
+        <div className="tab active" data-tab="Home">Home</div>
+        <div className="tab" data-tab="Timeline">Timeline</div>
+        <div className="tab" data-tab="Costo">Reporte</div>
+        <div className="tab" data-tab="Eval">Control de asignacion</div>
         <button className="admin-btn" id="adminOpenBtn" type="button">Admin</button>
         <div className="admin-session" id="adminSessionChip">
           <span id="adminGreeting">Hola Enrique</span>
@@ -31,7 +32,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="filter-bar" id="filterBar">
+      <div className="filter-bar" id="filterBar" style={{ display: "none" }}>
         <span className="ctrl-label">Obra</span>
         <div className="ms-wrap" id="msWrapObra">
           <button className="ms-btn" id="msBtnObra" type="button">Todas <span className="ms-arrow">▼</span></button>
@@ -58,7 +59,52 @@ export default function Home() {
         <div className="legend" id="tlLegend" />
       </div>
 
-      <div className="panel active" id="panelTimeline">
+      <div className="panel active" id="panelHome">
+        <div className="home-shell">
+          <div className="home-intro">
+            <div>
+              <div className="home-eyebrow">Panel de control</div>
+              <h1>Dotacion de Instalaciones</h1>
+              <p>Accede al timeline, revisa costos proyectados y opera la asignacion de personal desde una entrada unica.</p>
+            </div>
+            <div className="home-date">
+              <span>Corte operativo</span>
+              <strong id="homeCutoff">27 mayo 2026</strong>
+            </div>
+          </div>
+
+          <div className="home-nav-grid">
+            <button className="home-card" type="button" data-go-tab="Timeline">
+              <span className="home-card-kicker">Planificacion</span>
+              <strong>Timeline</strong>
+              <small>Obras, capas de dotacion, costos y subcontratos por periodo.</small>
+            </button>
+            <button className="home-card" type="button" data-go-tab="Costo">
+              <span className="home-card-kicker">Finanzas</span>
+              <strong>Reporte</strong>
+              <small>Costo mensual, costo proyectado y evolucion por mes.</small>
+            </button>
+            <button className="home-card" type="button" data-go-tab="Eval">
+              <span className="home-card-kicker">Operacion</span>
+              <strong>Control de asignacion</strong>
+              <small>Evaluacion, tarjetas por obra y futura reasignacion visual.</small>
+            </button>
+          </div>
+
+          <div className="home-summary">
+            <div className="home-summary-head">
+              <div>
+                <div className="home-eyebrow">Resumen global</div>
+                <h2>Estado actual de dotacion</h2>
+              </div>
+              <button className="home-mini-action" type="button" data-go-tab="Eval">Ir a control</button>
+            </div>
+            <div className="home-summary-grid" id="homeSummaryGrid" />
+          </div>
+        </div>
+      </div>
+
+      <div className="panel" id="panelTimeline">
         <div className="timeline-scroll"><div className="tl-grid" id="tlGrid" /></div>
         <div className="sub-panel">
           <div className="sub-header">Subcontratos Activos</div>
