@@ -1032,6 +1032,39 @@ function getAdminToken(){
   return localStorage.getItem('formatto_admin_token')||'';
 }
 
+function getAdminEmail(){
+  return localStorage.getItem('formatto_admin_email')||'';
+}
+
+function getAdminDisplayName(email){
+  const base=(email||'enrique').split('@')[0].split(/[._-]/)[0]||'admin';
+  return base.charAt(0).toUpperCase()+base.slice(1).toLowerCase();
+}
+
+function renderAdminSession(){
+  const token=getAdminToken();
+  const chip=document.getElementById('adminSessionChip');
+  const greeting=document.getElementById('adminGreeting');
+  const adminBtn=document.getElementById('adminOpenBtn');
+  if(!chip)return;
+  chip.classList.toggle('open',Boolean(token));
+  if(greeting)greeting.textContent=`Hola ${getAdminDisplayName(getAdminEmail())}`;
+  if(adminBtn)adminBtn.textContent=token?'Panel':'Admin';
+}
+
+function setAdminSession(token,email){
+  if(token)localStorage.setItem('formatto_admin_token',token);
+  if(email)localStorage.setItem('formatto_admin_email',email);
+  renderAdminSession();
+}
+
+function clearAdminSession(){
+  localStorage.removeItem('formatto_admin_token');
+  localStorage.removeItem('formatto_admin_email');
+  renderAdminSession();
+  setAdminStatus('Sesion cerrada.',false);
+}
+
 async function adminFetch(url,options={}){
   const headers={...(options.headers||{}),'Content-Type':'application/json'};
   const token=getAdminToken();
@@ -1182,14 +1215,12 @@ function bindAdmin(){
       });
       const data=await res.json();
       if(!res.ok)throw new Error(data.error||'No se pudo iniciar sesion.');
-      localStorage.setItem('formatto_admin_token',data.accessToken||'');
+      setAdminSession(data.accessToken||'',data.user?.email||'');
       setAdminStatus(`Sesion activa: ${data.user?.email||'admin'}`,false);
     }catch(err){setAdminStatus(err.message,true);}
   });
-  document.getElementById('adminLogoutBtn')?.addEventListener('click',()=>{
-    localStorage.removeItem('formatto_admin_token');
-    setAdminStatus('Sesion cerrada.',false);
-  });
+  document.getElementById('adminLogoutBtn')?.addEventListener('click',clearAdminSession);
+  document.getElementById('globalLogoutBtn')?.addEventListener('click',clearAdminSession);
   document.getElementById('saveObraBtn')?.addEventListener('click',async()=>{
     try{
       await adminFetch('/api/admin/obras',{method:'POST',body:JSON.stringify({
@@ -1258,6 +1289,7 @@ function bindAdmin(){
       setAdminStatus('Vista previa Excel lista.',false);
     }catch(err){setAdminStatus(err.message,true);}
   });
+  renderAdminSession();
 }
 
 function bindTimelineControls(){

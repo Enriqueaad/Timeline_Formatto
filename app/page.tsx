@@ -25,6 +25,10 @@ export default function Home() {
         <div className="tab" data-tab="Costo">Costo Proyectado</div>
         <div className="tab" data-tab="Eval">Evaluacion Personal</div>
         <button className="admin-btn" id="adminOpenBtn" type="button">Admin</button>
+        <div className="admin-session" id="adminSessionChip">
+          <span id="adminGreeting">Hola Enrique</span>
+          <button className="admin-session-logout" id="globalLogoutBtn" type="button">Cerrar sesion</button>
+        </div>
       </div>
 
       <div className="filter-bar" id="filterBar">

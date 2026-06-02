@@ -39,6 +39,32 @@
 }
 
 .admin-btn:hover{filter:brightness(0.95);}
+.admin-session{
+  display:none;
+  align-items:center;
+  gap:8px;
+  margin-left:6px;
+  border:1px solid var(--sand);
+  background:var(--white);
+  padding:4px 6px 4px 8px;
+  color:var(--grafito);
+  font-size:9px;
+  font-weight:700;
+}
+.admin-session.open{display:flex;}
+.admin-session-logout{
+  border:1px solid var(--grafito);
+  background:var(--grafito);
+  color:var(--white);
+  font-family:inherit;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  padding:4px 7px;
+  cursor:pointer;
+}
+.admin-session-logout:hover{filter:brightness(0.95);}
 
 .admin-panel{
   position:fixed;
