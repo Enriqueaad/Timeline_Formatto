@@ -1,6 +1,7 @@
 .next/
 node_modules/
 dev-server*.log
+.env
 .env.local
 .env*.local
 npm-debug.log*
@@ -13,3 +14,12 @@ _github_clean/
 BrandBook - Formatto/
 version_inicio_git/
 vercel_static/
+
+# Claude Code session data
+.claude/
+
+# DB backups y archivos locales
+Base de Datos - APP/
+
+# Build artifacts
+tsconfig.tsbuildinfo

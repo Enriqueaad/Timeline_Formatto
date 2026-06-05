@@ -1,0 +1,309 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── AUTH ──────────────────────────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  passwordHash  String
+  role          UserRole @default(LECTURA)
+  activo        Boolean  @default(true)
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum UserRole {
+  ADMIN
+  COORDINADOR
+  SUPERVISOR
+  LECTURA
+}
+
+// ─── PROYECTOS ─────────────────────────────────────────────────────────────
+
+model Proyecto {
+  id            String         @id @default(cuid())
+  nombre        String
+  constructora  String?
+  estado        EstadoProyecto @default(ACTIVO)
+  finEstimado   DateTime?
+  torre         String?
+  observacion   String?
+  creadoEn      DateTime       @default(now())
+  actualizadoEn DateTime       @updatedAt
+
+  archivos     ArchivoExcel[]
+  unidades     Unidad[]
+  asignaciones AsignacionPersonal[]
+  evaluaciones Evaluacion[]
+  avances      AvanceObra[]
+  paradasRuta  ParadaRuta[]
+  subcontratos Subcontrato[]
+}
+
+enum EstadoProyecto {
+  ACTIVO
+  PAUSADO
+  TERMINADO
+}
+
+// ─── EXCEL ─────────────────────────────────────────────────────────────────
+
+model ArchivoExcel {
+  id                 String      @id @default(cuid())
+  proyectoId         String
+  proyecto           Proyecto    @relation(fields: [proyectoId], references: [id])
+  tipo               TipoArchivo
+  nombreOriginal     String
+  urlBlob            String?
+  filasLeidas        Int
+  unidadesDetectadas Int
+  cargadoPor         String
+  creadoEn           DateTime    @default(now())
+}
+
+enum TipoArchivo {
+  COCINA
+  CLOSET_INTERIOR
+  PIERNAS
+  OTRO
+}
+
+// ─── UNIDADES / DEPARTAMENTOS ──────────────────────────────────────────────
+
+model Unidad {
+  id         String   @id @default(cuid())
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id])
+  piso       String
+  dpto       String
+  torre      String?
+  tipo       String?
+  creadoEn   DateTime @default(now())
+
+  items ItemInstalacion[]
+
+  @@unique([proyectoId, piso, dpto, torre])
+}
+
+model ItemInstalacion {
+  id            String           @id @default(cuid())
+  unidadId      String
+  unidad        Unidad           @relation(fields: [unidadId], references: [id])
+  sku           String?
+  descripcion   String?
+  subconjunto   String?
+  cantidad      Int              @default(1)
+  costo         Float?
+  etapa         EtapaInstalacion @default(PEDIDO)
+  creadoEn      DateTime         @default(now())
+  actualizadoEn DateTime         @updatedAt
+
+  historial HistorialEtapa[]
+}
+
+model HistorialEtapa {
+  id      String           @id @default(cuid())
+  itemId  String
+  item    ItemInstalacion  @relation(fields: [itemId], references: [id])
+  etapa   EtapaInstalacion
+  fecha   DateTime         @default(now())
+  usuario String
+  nota    String?
+}
+
+enum EtapaInstalacion {
+  PEDIDO
+  FABRICACION
+  DESPACHO
+  INSTALACION
+  ENTREGA_CONFORME
+  ATRASADO
+  OBSERVACION
+}
+
+// ─── PERSONAL ──────────────────────────────────────────────────────────────
+
+model Personal {
+  id            String         @id @default(cuid())
+  rut           String         @unique
+  nombre        String
+  paterno       String
+  materno       String?
+  tipoContrato  TipoContrato
+  tipo          TipoPersonal
+  cargo         String
+  estado        EstadoPersonal @default(ACTIVO)
+  creadoEn      DateTime       @default(now())
+  actualizadoEn DateTime       @updatedAt
+
+  asignaciones AsignacionPersonal[]
+  evaluaciones Evaluacion[]
+}
+
+model AsignacionPersonal {
+  id              String     @id @default(cuid())
+  personalId      String
+  personal        Personal   @relation(fields: [personalId], references: [id])
+  proyectoId      String
+  proyecto        Proyecto   @relation(fields: [proyectoId], references: [id])
+  supervisorId    String?
+  supervisor      Supervisor? @relation(fields: [supervisorId], references: [id])
+  cantidad        Int        @default(1)
+  cantSubcontrato Int?
+  costoMensual    Int
+  fechaInicio     DateTime
+  fechaFin        DateTime?
+  desvincular     Boolean    @default(false)
+  creadoEn        DateTime   @default(now())
+  actualizadoEn   DateTime   @updatedAt
+}
+
+model Evaluacion {
+  id          String   @id @default(cuid())
+  personalId  String
+  personal    Personal @relation(fields: [personalId], references: [id])
+  proyectoId  String
+  proyecto    Proyecto @relation(fields: [proyectoId], references: [id])
+  nota        Int
+  periodo     DateTime
+  observacion String?
+  evaluadoPor String
+  creadoEn    DateTime @default(now())
+}
+
+model Subcontrato {
+  id            String   @id @default(cuid())
+  proyectoId    String
+  proyecto      Proyecto @relation(fields: [proyectoId], references: [id])
+  nombre        String
+  cantidad      Int      @default(1)
+  fechaInicio   DateTime?
+  fechaFin      DateTime?
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+enum TipoContrato {
+  PLAZO_FIJO
+  INDEFINIDO
+}
+
+enum TipoPersonal {
+  FORMATTO
+  SUBCONTRATO
+}
+
+enum EstadoPersonal {
+  ACTIVO
+  INACTIVO
+  LICENCIA
+  DESVINCULADO
+}
+
+// ─── SUPERVISORES ──────────────────────────────────────────────────────────
+
+model Supervisor {
+  id       String   @id @default(cuid())
+  nombre   String
+  rut      String?  @unique
+  email    String?
+  telefono String?
+  activo   Boolean  @default(true)
+  creadoEn DateTime @default(now())
+
+  asignaciones AsignacionPersonal[]
+  rutas        RutaVisita[]
+}
+
+model RutaVisita {
+  id            String     @id @default(cuid())
+  supervisorId  String
+  supervisor    Supervisor @relation(fields: [supervisorId], references: [id])
+  semana        DateTime
+  creadoEn      DateTime   @default(now())
+  actualizadoEn DateTime   @updatedAt
+
+  paradas ParadaRuta[]
+}
+
+model ParadaRuta {
+  id           String     @id @default(cuid())
+  rutaId       String
+  ruta         RutaVisita @relation(fields: [rutaId], references: [id])
+  proyectoId   String
+  proyecto     Proyecto   @relation(fields: [proyectoId], references: [id])
+  orden        Int
+  diaVisita    DiaSemana
+  horaEstimada String?
+  observacion  String?
+}
+
+enum DiaSemana {
+  LUNES
+  MARTES
+  MIERCOLES
+  JUEVES
+  VIERNES
+  SABADO
+}
+
+// ─── AVANCE ────────────────────────────────────────────────────────────────
+
+model AvanceObra {
+  id                  String   @id @default(cuid())
+  proyectoId          String
+  proyecto            Proyecto @relation(fields: [proyectoId], references: [id])
+  fecha               DateTime
+  porcentaje          Float
+  unidadesCompletadas Int
+  unidadesTotales     Int
+  registradoPor       String
+  observacion         String?
+  creadoEn            DateTime @default(now())
+}

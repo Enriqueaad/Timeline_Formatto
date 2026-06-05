@@ -1,5 +1,75 @@
 @import "../public/assets/css/timeline.css";
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 17%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 17%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 17%;
+
+    /* Marca Formatto — rojo #D35132 */
+    --primary: 12 62% 51%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 16% 96%;
+    --secondary-foreground: 0 0% 17%;
+
+    --muted: 40 16% 96%;
+    --muted-foreground: 33 14% 42%;
+
+    --accent: 40 16% 95%;
+    --accent-foreground: 0 0% 17%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 21% 89%;
+    --input: 40 21% 89%;
+    --ring: 12 62% 51%;
+
+    --radius: 0.25rem;
+
+    /* Sidebar (blanco) */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 17%;
+    --sidebar-primary: 12 62% 51%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 16% 95%;
+    --sidebar-accent-foreground: 0 0% 17%;
+    --sidebar-border: 40 21% 89%;
+    --sidebar-ring: 12 62% 51%;
+  }
+
+  *,
+  *::before,
+  *::after { box-sizing: border-box; }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    font-family: 'Titillium Web', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 13px;
+    color: hsl(var(--foreground));
+    background: hsl(var(--background));
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+}
+
 .brand-word{
   font-size:26px;
   font-weight:700;

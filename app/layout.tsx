@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import Script from "next/script";
+﻿import type { Metadata } from "next";
+import { SessionProvider } from "@/components/layout/SessionProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Formatto - Dotacion de Personal",
-  description: "Timeline y CRUD de dotacion Formatto conectado a Supabase."
+  title: "Formatto — Gestión de Instalaciones",
+  description: "Dashboard interno Formatto para gestión de proyectos, dotación e instalaciones.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -14,18 +14,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@200;300;400;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,200;0,300;0,400;0,600;0,700;1,300&display=swap"
           rel="stylesheet"
         />
       </head>
       <body>
-        {children}
-        <Script id="timeline-config" strategy="beforeInteractive">
-          {`window.TIMELINE_CONFIG={cutoffDate:'2026-05-27'};`}
-        </Script>
-        <Script src="/assets/js/data.js" strategy="beforeInteractive" />
-        <Script src="/assets/js/app.js" strategy="afterInteractive" />
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );
 }
+

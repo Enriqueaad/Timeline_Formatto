@@ -1,12 +1,14 @@
+.next
+.vercel/output
+node_modules
+dev-server*.log
+*.tsbuildinfo
 .env.local
 .env*.local
-node_modules/
-.next/
-.vercel/
-_deploy_clean/
-dev-server*.log
-base_excel/
-Base_Excel/
-version_inicio_git/
-vercel_static/
-BrandBook - Formatto/
+Base_Excel
+base_excel
+_deploy_clean
+_github_clean
+BrandBook - Formatto
+version_inicio_git
+vercel_static
