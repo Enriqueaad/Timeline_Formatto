@@ -77,13 +77,14 @@ model Proyecto {
   creadoEn      DateTime       @default(now())
   actualizadoEn DateTime       @updatedAt
 
-  archivos     ArchivoExcel[]
-  unidades     Unidad[]
-  asignaciones AsignacionPersonal[]
-  evaluaciones Evaluacion[]
-  avances      AvanceObra[]
-  paradasRuta  ParadaRuta[]
-  subcontratos Subcontrato[]
+  archivos               ArchivoExcel[]
+  unidades               Unidad[]
+  asignaciones           AsignacionPersonal[]
+  evaluaciones           Evaluacion[]
+  avances                AvanceObra[]
+  paradasRuta            ParadaRuta[]
+  subcontratos           Subcontrato[]
+  asignacionesSupervisor AsignacionSupervisor[]
 }
 
 enum EstadoProyecto {
@@ -257,8 +258,24 @@ model Supervisor {
   activo   Boolean  @default(true)
   creadoEn DateTime @default(now())
 
-  asignaciones AsignacionPersonal[]
-  rutas        RutaVisita[]
+  asignaciones           AsignacionPersonal[]
+  rutas                  RutaVisita[]
+  asignacionesSupervisor AsignacionSupervisor[]
+}
+
+// ─── ASIGNACIÓN SUPERVISOR ↔ PROYECTO ──────────────────────────────────────
+// Relación formal y permanente: qué supervisor es responsable de qué proyecto.
+// 'hasta: null' = asignación activa. Historial de rotaciones queda registrado.
+
+model AsignacionSupervisor {
+  id           String     @id @default(cuid())
+  supervisorId String
+  supervisor   Supervisor @relation(fields: [supervisorId], references: [id])
+  proyectoId   String
+  proyecto     Proyecto   @relation(fields: [proyectoId], references: [id])
+  desde        DateTime   @default(now())
+  hasta        DateTime?
+  creadoEn     DateTime   @default(now())
 }
 
 model RutaVisita {

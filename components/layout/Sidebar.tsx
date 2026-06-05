@@ -11,6 +11,7 @@ import {
   UserCog,
   CalendarRange,
   Route,
+  ClipboardList,
   DollarSign,
   FileText,
   Settings,
@@ -50,8 +51,9 @@ const NAV: NavGroup[] = [
   {
     section: "PLANIFICACIÓN",
     items: [
-      { href: "/timeline", label: "Timeline", icon: CalendarRange },
-      { href: "/rutas", label: "Rutas de Visita", icon: Route },
+      { href: "/timeline",          label: "Timeline",           icon: CalendarRange },
+      { href: "/rutas",             label: "Rutas de Visita",    icon: Route },
+      { href: "/rutas/asignacion",  label: "Asig. Supervisores", icon: ClipboardList },
     ],
   },
   {
