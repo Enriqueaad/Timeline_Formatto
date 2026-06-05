@@ -1,7 +1,8 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { prisma } from "@/lib/prisma";
-import { DotacionTable, type DotacionRow } from "@/components/dotacion/DotacionTable";
+import { DotacionVista } from "@/components/dotacion/DotacionVista";
+import type { DotacionRow } from "@/components/dotacion/DotacionTable";
 import type { EstadoPersonal, TipoContrato, TipoPersonal } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +95,7 @@ export default async function DotacionPage() {
       estado: row.estado,
       proyectoActual: actual ? { id: actual.proyecto.id, nombre: actual.proyecto.nombre } : null,
       ultimaEvaluacion: row.evaluaciones[0]?.nota ?? null,
+      costoMensual: actual?.costoMensual ?? 0,
     };
   });
 
@@ -113,7 +115,7 @@ export default async function DotacionPage() {
         </div>
       )}
 
-      <DotacionTable rows={rows} proyectos={proyectoOptions} />
+      <DotacionVista rows={rows} proyectos={proyectoOptions} />
     </>
   );
 }

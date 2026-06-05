@@ -14,7 +14,7 @@
 | **Repositorio** | `C:\Users\Enrique Arenas\Documents\Desarrollos - APP\Control de Instalaciones` |
 | **URL producción** | https://formatto-instalaciones-blue.vercel.app |
 | **Última actualización** | 2026-06-05 |
-| **Fase actual** | FASE B completada — asignación supervisor ↔ proyecto ✅ |
+| **Fase actual** | FASE C completada — board rápido dotación ✅ |
 
 ---
 
@@ -287,3 +287,4 @@ NEXTAUTH_URL=http://localhost:3000
 | 2026-06-04 | FASE UI-3 | Revisión + barrido beige completo (15 archivos) — aprobada | Claude Code |
 | 2026-06-05 | FASE A | Panel /rutas semanal con chips — completada | Claude Code |
 | 2026-06-05 | FASE B | Asignación supervisor↔proyecto — completada | Claude Code |
+| 2026-06-05 | FASE C | Board rápido dotación (vista tablero) — completada | Claude Code |

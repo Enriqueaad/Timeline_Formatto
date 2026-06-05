@@ -29,6 +29,7 @@ export type DotacionRow = {
   estado: EstadoPersonal;
   proyectoActual: { id: string; nombre: string } | null;
   ultimaEvaluacion: number | null;
+  costoMensual: number; // costo de la asignación activa (para quick-move en tablero)
 };
 
 type DotacionTableProps = {
