@@ -1,4 +1,4 @@
-﻿import { PageHeader } from "@/components/layout/PageHeader";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import {
   Table,
@@ -9,33 +9,9 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { getSupabaseAnon } from "@/lib/supabase";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-type PersonalRow = {
-  id: string;
-  nombre: string | null;
-  cargo: string | null;
-  obra_id: string | null;
-  obra_nombre: string | null;
-  cant: number | null;
-  costo: number | null;
-};
-
-type ObraCosto = {
-  obra: string;
-  personas: number;
-  costo: number;
-};
-
-function cantidad(row: PersonalRow) {
-  return row.cant && row.cant > 0 ? row.cant : 1;
-}
-
-function esSubcontrato(row: PersonalRow) {
-  return `${row.nombre ?? ""} ${row.cargo ?? ""}`.toLowerCase().includes("subcontrato");
-}
 
 function formatCLP(value: number) {
   return new Intl.NumberFormat("es-CL", {
@@ -45,48 +21,69 @@ function formatCLP(value: number) {
   }).format(value);
 }
 
-async function getPersonal() {
-  const supabase = getSupabaseAnon();
-  if (!supabase) {
-    return { rows: [] as PersonalRow[], error: "Supabase no esta configurado." };
+type GrupoObra = {
+  proyectoId: string;
+  obra: string;
+  personas: number;
+  costo: number;
+};
+
+async function getData() {
+  try {
+    const asignaciones = await prisma.asignacionPersonal.findMany({
+      where: {
+        fechaFin: null,
+        desvincular: false,
+        personal: { estado: { not: "DESVINCULADO" } },
+      },
+      include: {
+        personal: { select: { tipo: true } },
+        proyecto: { select: { id: true, nombre: true } },
+      },
+      orderBy: { proyecto: { nombre: "asc" } },
+    });
+    return { asignaciones, error: null as string | null };
+  } catch (error) {
+    return {
+      asignaciones: [] as Awaited<ReturnType<typeof prisma.asignacionPersonal.findMany<{
+        include: { personal: { select: { tipo: true } }; proyecto: { select: { id: true; nombre: true } } };
+      }>>>,
+      error: error instanceof Error ? error.message : "No fue posible conectar con Prisma.",
+    };
   }
-
-  const { data, error } = await supabase
-    .from("personal")
-    .select("id,nombre,cargo,obra_id,obra_nombre,cant,costo")
-    .order("obra_nombre", { ascending: true })
-    .limit(100);
-
-  if (error) return { rows: [] as PersonalRow[], error: error.message };
-  return { rows: (data ?? []) as PersonalRow[], error: null as string | null };
-}
-
-function agruparPorObra(rows: PersonalRow[]) {
-  const byObra = new Map<string, ObraCosto>();
-
-  for (const row of rows) {
-    const obra = row.obra_nombre ?? row.obra_id ?? "Sin obra";
-    const current = byObra.get(obra) ?? { obra, personas: 0, costo: 0 };
-    current.personas += cantidad(row);
-    current.costo += row.costo ?? 0;
-    byObra.set(obra, current);
-  }
-
-  return Array.from(byObra.values()).sort((a, b) => b.costo - a.costo);
 }
 
 export default async function CostosPage() {
-  const { rows, error } = await getPersonal();
-  const grupos = agruparPorObra(rows);
-  const totalCosto = grupos.reduce((sum, row) => sum + row.costo, 0);
-  const totalPersonas = grupos.reduce((sum, row) => sum + row.personas, 0);
-  const subcontratos = rows.filter(esSubcontrato).reduce((sum, row) => sum + cantidad(row), 0);
-  const formatto = totalPersonas - subcontratos;
+  const { asignaciones, error } = await getData();
+
+  // ── Agrupar por proyecto ──────────────────────────────────────────────────
+  const grupoMap = new Map<string, GrupoObra>();
+
+  for (const a of asignaciones) {
+    const key = a.proyectoId;
+    const current = grupoMap.get(key) ?? {
+      proyectoId: key,
+      obra: a.proyecto.nombre,
+      personas: 0,
+      costo: 0,
+    };
+    current.personas += 1;
+    current.costo += a.costoMensual;
+    grupoMap.set(key, current);
+  }
+
+  const grupos = Array.from(grupoMap.values()).sort((a, b) => b.costo - a.costo);
+
+  // ── Totales ───────────────────────────────────────────────────────────────
+  const totalCosto = grupos.reduce((sum, g) => sum + g.costo, 0);
+  const totalPersonas = grupos.reduce((sum, g) => sum + g.personas, 0);
+  const formatto = asignaciones.filter((a) => a.personal.tipo === "FORMATTO").length;
+  const subcontratos = asignaciones.filter((a) => a.personal.tipo === "SUBCONTRATO").length;
   const promedio = totalPersonas > 0 ? Math.round(totalCosto / totalPersonas) : 0;
 
   return (
     <>
-      <PageHeader eyebrow="Analisis" title="Costos de Dotacion" />
+      <PageHeader eyebrow="Análisis" title="Costos de Dotación" />
 
       <div className="grid grid-cols-4 gap-4 mb-8">
         <StatCard eyebrow="Costo total mes" value={formatCLP(totalCosto)} />
@@ -97,7 +94,7 @@ export default async function CostosPage() {
 
       {error && (
         <div className="mb-4 bg-white border border-border p-4 text-sm text-formatto-umber">
-          No fue posible cargar datos desde Supabase: {error}
+          No fue posible cargar los datos: {error}
         </div>
       )}
 
@@ -105,8 +102,8 @@ export default async function CostosPage() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Obra</TableHead>
-              <TableHead className="text-right">N personas</TableHead>
+              <TableHead>Obra / Proyecto</TableHead>
+              <TableHead className="text-right">N° personas</TableHead>
               <TableHead className="text-right">Costo mensual</TableHead>
               <TableHead className="text-right">% del total</TableHead>
             </TableRow>
@@ -115,17 +112,19 @@ export default async function CostosPage() {
             {grupos.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={4} className="p-6 text-center text-formatto-bark">
-                  Sin costos para mostrar.
+                  Sin asignaciones activas con costo registrado.
                 </TableCell>
               </TableRow>
             ) : (
-              grupos.map((row) => {
-                const porcentaje = totalCosto > 0 ? (row.costo / totalCosto) * 100 : 0;
+              grupos.map((grupo) => {
+                const porcentaje = totalCosto > 0 ? (grupo.costo / totalCosto) * 100 : 0;
                 return (
-                  <TableRow key={row.obra}>
-                    <TableCell className="font-semibold text-formatto-grafito">{row.obra}</TableCell>
-                    <TableCell className="text-right">{row.personas}</TableCell>
-                    <TableCell className="text-right">{formatCLP(row.costo)}</TableCell>
+                  <TableRow key={grupo.proyectoId}>
+                    <TableCell className="font-semibold text-formatto-grafito">
+                      {grupo.obra}
+                    </TableCell>
+                    <TableCell className="text-right">{grupo.personas}</TableCell>
+                    <TableCell className="text-right">{formatCLP(grupo.costo)}</TableCell>
                     <TableCell className="text-right">{porcentaje.toFixed(1)}%</TableCell>
                   </TableRow>
                 );
@@ -134,10 +133,10 @@ export default async function CostosPage() {
           </TableBody>
           <TableFooter>
             <TableRow className="hover:bg-transparent">
-              <TableCell>Total general</TableCell>
-              <TableCell className="text-right">{totalPersonas}</TableCell>
-              <TableCell className="text-right">{formatCLP(totalCosto)}</TableCell>
-              <TableCell className="text-right">100%</TableCell>
+              <TableCell className="font-semibold">Total general</TableCell>
+              <TableCell className="text-right font-semibold">{totalPersonas}</TableCell>
+              <TableCell className="text-right font-semibold">{formatCLP(totalCosto)}</TableCell>
+              <TableCell className="text-right font-semibold">100%</TableCell>
             </TableRow>
           </TableFooter>
         </Table>
