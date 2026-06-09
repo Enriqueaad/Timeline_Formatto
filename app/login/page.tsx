@@ -60,7 +60,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex bg-white">
       {/* Franja brandbook (izquierda) */}
-      <div className="hidden md:flex md:w-[42%] lg:w-[45%] relative overflow-hidden">
+      <div className="hidden md:flex md:w-2/3 relative overflow-hidden">
         <iframe
           src="/brandbook-panel.html"
           title="Formatto"
