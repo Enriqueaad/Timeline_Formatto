@@ -299,6 +299,12 @@ model ParadaRuta {
   diaVisita    DiaSemana
   horaEstimada String?
   observacion  String?
+  // ── Cambios respecto al plan original ──
+  diaOriginal  DiaSemana? // null = nunca se movió; si tiene valor = día del plan inicial
+  // ── Cumplimiento de la visita ──
+  completada   Boolean    @default(false)
+  fechaVisita  DateTime?  // cuándo se marcó como realizada
+  notaVisita   String?    // nota al concretar/no concretar la visita
 }
 
 enum DiaSemana {

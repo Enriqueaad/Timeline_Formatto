@@ -2,20 +2,10 @@ import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/Button";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { formatSemana } from "@/lib/rutas/date";
+import { HistorialRutas, type SemanaHist } from "@/components/supervisores/HistorialRutas";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("es-CL", { day: "2-digit", month: "short", year: "numeric" }).format(value);
-}
 
 function dateParam(value: Date) {
   return value.toISOString().slice(0, 10);
@@ -30,7 +20,12 @@ export default async function SupervisorHistorialPage({ params }: { params: Prom
       include: {
         rutas: {
           orderBy: { semana: "desc" },
-          include: { paradas: true },
+          include: {
+            paradas: {
+              include: { proyecto: { select: { nombre: true } } },
+              orderBy: [{ diaVisita: "asc" }, { orden: "asc" }],
+            },
+          },
         },
       },
     });
@@ -43,6 +38,19 @@ export default async function SupervisorHistorialPage({ params }: { params: Prom
         </>
       );
     }
+
+    const semanas: SemanaHist[] = supervisor.rutas.map((ruta) => ({
+      rutaId:      ruta.id,
+      semanaParam: dateParam(ruta.semana),
+      semanaLabel: formatSemana(dateParam(ruta.semana)),
+      paradas: ruta.paradas.map((p) => ({
+        proyectoNombre: p.proyecto.nombre,
+        diaVisita:      p.diaVisita,
+        diaOriginal:    p.diaOriginal,
+        horaEstimada:   p.horaEstimada,
+        completada:     p.completada,
+      })),
+    }));
 
     return (
       <>
@@ -61,34 +69,7 @@ export default async function SupervisorHistorialPage({ params }: { params: Prom
           }
         />
 
-        <div className="border border-border bg-white">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Semana</TableHead>
-                <TableHead className="text-right">Paradas</TableHead>
-                <TableHead className="text-right">Accion</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {supervisor.rutas.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={3} className="p-8 text-center text-muted-foreground">Sin rutas guardadas.</TableCell>
-                </TableRow>
-              ) : supervisor.rutas.map((ruta) => (
-                <TableRow key={ruta.id}>
-                  <TableCell className="font-semibold text-formatto-grafito">{formatDate(ruta.semana)}</TableCell>
-                  <TableCell className="text-right">{ruta.paradas.length}</TableCell>
-                  <TableCell className="text-right">
-                    <Link href={`/supervisores/${supervisor.id}/ruta?semana=${dateParam(ruta.semana)}`} className="text-formatto-grafito underline underline-offset-2">
-                      Ver
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <HistorialRutas supervisorId={supervisor.id} semanas={semanas} />
       </>
     );
   } catch (error) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -70,8 +70,8 @@ export function AsignacionBoard({ proyectos, supervisores }: Props) {
                 </TableCell>
               </TableRow>
             ) : proyectos.map((proyecto) => (
-              <>
-                <TableRow key={proyecto.id}>
+              <React.Fragment key={proyecto.id}>
+                <TableRow>
                   {/* Proyecto */}
                   <TableCell className="font-semibold text-formatto-grafito">
                     {proyecto.nombre}
@@ -141,7 +141,7 @@ export function AsignacionBoard({ proyectos, supervisores }: Props) {
                     <TableCell />
                   </TableRow>
                 ))}
-              </>
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>

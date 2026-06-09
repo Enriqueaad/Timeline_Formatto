@@ -50,6 +50,10 @@ export default async function SupervisorRutaPage({
       orden: parada.orden,
       horaEstimada: parada.horaEstimada,
       observacion: parada.observacion,
+      originalDia: parada.diaOriginal,
+      completada: parada.completada,
+      fechaVisita: parada.fechaVisita ? parada.fechaVisita.toISOString() : null,
+      notaVisita: parada.notaVisita,
     }));
 
     return (

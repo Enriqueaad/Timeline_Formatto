@@ -7,13 +7,14 @@ import { DIA_LABEL } from "./types";
 import { ParadaCard } from "./ParadaCard";
 
 type DiaColumnaProps = {
-  dia:             DiaSemana;
-  paradas:         ParadaPlan[];
-  onEliminar:      (idx: number) => void;
-  onPeriodoChange: (idx: number, periodo: string | null) => void;
+  dia:               DiaSemana;
+  paradas:           ParadaPlan[];
+  onEliminar:        (idx: number) => void;
+  onPeriodoChange:   (idx: number, periodo: string | null) => void;
+  onToggleCumplida:  (idx: number) => void;
 };
 
-export function DiaColumna({ dia, paradas, onEliminar, onPeriodoChange }: DiaColumnaProps) {
+export function DiaColumna({ dia, paradas, onEliminar, onPeriodoChange, onToggleCumplida }: DiaColumnaProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dia });
 
   return (
@@ -54,6 +55,7 @@ export function DiaColumna({ dia, paradas, onEliminar, onPeriodoChange }: DiaCol
               parada={parada}
               onEliminar={() => onEliminar(index)}
               onPeriodoChange={(periodo) => onPeriodoChange(index, periodo)}
+              onToggleCumplida={() => onToggleCumplida(index)}
             />
           ))
         )}

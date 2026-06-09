@@ -65,6 +65,8 @@ export default async function RutasPage({
               // Fuera de plan: el proyecto tiene asignado oficial y NO es este supervisor
               esFueraDePlan:
                 supervisorAsignado !== undefined && supervisorAsignado !== s.id,
+              completada:  p.completada,
+              diaOriginal: p.diaOriginal,
             };
           });
 

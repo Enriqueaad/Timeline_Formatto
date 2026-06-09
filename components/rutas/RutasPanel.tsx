@@ -22,7 +22,14 @@ export type ParadaChip = {
   proyectoId: string;
   proyectoNombre: string;
   horaEstimada: string | null;
-  esFueraDePlan: boolean; // true si el supervisor que visita ≠ asignado oficial
+  esFueraDePlan: boolean;          // true si el supervisor que visita ≠ asignado oficial
+  completada: boolean;             // visita realizada
+  diaOriginal: string | null;      // día del plan original si se movió
+};
+
+const DIA_ABREV_CHIP: Record<string, string> = {
+  LUNES: "LUN", MARTES: "MAR", MIERCOLES: "MIÉ",
+  JUEVES: "JUE", VIERNES: "VIE", SABADO: "SÁB",
 };
 
 export type SupervisorRow = {
@@ -68,6 +75,8 @@ function Chip({ parada, supervisorId, dia, overlay = false }: ChipProps) {
       ? parada.proyectoNombre.slice(0, 15) + "…"
       : parada.proyectoNombre;
 
+  const movido = parada.diaOriginal !== null;
+
   return (
     <div
       ref={setNodeRef}
@@ -76,7 +85,9 @@ function Chip({ parada, supervisorId, dia, overlay = false }: ChipProps) {
       title={
         parada.esFueraDePlan
           ? `${parada.proyectoNombre} — Supervisor no asignado a este proyecto`
-          : parada.proyectoNombre
+          : movido
+            ? `${parada.proyectoNombre} — Movido desde ${DIA_ABREV_CHIP[parada.diaOriginal as string] ?? parada.diaOriginal}`
+            : parada.proyectoNombre
       }
       className={[
         "px-2 py-1 text-xs select-none transition-colors",
@@ -84,29 +95,48 @@ function Chip({ parada, supervisorId, dia, overlay = false }: ChipProps) {
           ? "shadow-lg rotate-1 cursor-grabbing"
           : "cursor-grab active:cursor-grabbing",
         isDragging && !overlay ? "opacity-40" : "",
-        parada.esFueraDePlan
-          ? "bg-amber-50 border border-amber-400 hover:border-amber-500"
-          : "bg-white border border-border hover:border-primary hover:bg-accent",
+        parada.completada
+          ? "bg-emerald-50 border border-emerald-300"
+          : parada.esFueraDePlan
+            ? "bg-amber-50 border border-amber-400 hover:border-amber-500"
+            : "bg-white border border-border hover:border-primary hover:bg-accent",
       ]
         .filter(Boolean)
         .join(" ")}
     >
       <div className="flex items-start justify-between gap-1">
-        <p className="font-semibold text-formatto-grafito leading-tight">{nombre}</p>
-        {parada.esFueraDePlan && (
+        <p
+          className={[
+            "font-semibold leading-tight",
+            parada.completada ? "text-emerald-800" : "text-formatto-grafito",
+          ].join(" ")}
+        >
+          {nombre}
+        </p>
+        <span className="flex items-center gap-0.5 shrink-0">
+          {parada.completada && (
+            <span className="text-emerald-600 text-[10px] leading-tight" aria-label="Visita realizada">✓</span>
+          )}
+          {parada.esFueraDePlan && (
+            <span className="text-amber-500 text-[10px] leading-tight" aria-label="Fuera de asignación">⚠</span>
+          )}
+        </span>
+      </div>
+      <div className="flex items-center gap-1 mt-0.5">
+        {parada.horaEstimada && (
+          <span className="text-formatto-bark" style={{ fontSize: "10px" }}>
+            {parada.horaEstimada}
+          </span>
+        )}
+        {movido && (
           <span
-            className="text-amber-500 text-[10px] leading-tight shrink-0"
-            aria-label="Fuera de asignación"
+            className="bg-amber-100 text-amber-700 px-1 font-bold leading-none"
+            style={{ fontSize: "9px" }}
           >
-            ⚠
+            ← {DIA_ABREV_CHIP[parada.diaOriginal as string] ?? parada.diaOriginal}
           </span>
         )}
       </div>
-      {parada.horaEstimada && (
-        <p className="text-formatto-bark mt-0.5" style={{ fontSize: "10px" }}>
-          {parada.horaEstimada}
-        </p>
-      )}
     </div>
   );
 }

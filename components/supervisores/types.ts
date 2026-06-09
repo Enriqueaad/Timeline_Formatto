@@ -47,5 +47,9 @@ export type ParadaPlan = {
   orden:         number;
   horaEstimada?: string | null;
   observacion?:  string | null;
-  originalDia?:  DiaSemana; // día en la ruta guardada — para indicador de cambio
+  originalDia?:  DiaSemana | null; // día del plan original — para indicador de cambio
+  // ── Cumplimiento ──
+  completada?:   boolean;
+  fechaVisita?:  string | null;
+  notaVisita?:   string | null;
 };

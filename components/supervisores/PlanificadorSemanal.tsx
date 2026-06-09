@@ -11,7 +11,7 @@ import {
 import type { DiaSemana } from "@prisma/client";
 import { Button } from "@/components/ui/Button";
 import { addDays, formatSemana } from "@/lib/rutas/date";
-import { copiarSemanaAnterior, guardarRuta } from "@/lib/actions/ruta";
+import { copiarSemanaAnterior, guardarRuta, marcarCumplimiento } from "@/lib/actions/ruta";
 import { DiaColumna } from "./DiaColumna";
 import { ProyectoPaleta } from "./ProyectoPaleta";
 import { ExportarRutaBtn } from "./ExportarRutaBtn";
@@ -61,13 +61,13 @@ export function PlanificadorSemanal({
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
-  // Inicializar paradas con tempId y originalDia
+  // Inicializar paradas con tempId; originalDia viene de la BD (diaOriginal)
   const [paradas, setParadas] = useState<ParadaPlan[]>(() =>
     normalizarOrden(
       rutaActual.map((p) => ({
         ...p,
         tempId:      p.id ?? nuevoTempId(),
-        originalDia: p.diaVisita,
+        originalDia: p.originalDia ?? undefined,
       }))
     )
   );
@@ -105,6 +105,29 @@ export function PlanificadorSemanal({
     );
   }
 
+  function toggleCumplida(dia: DiaSemana, idx: number) {
+    const delDia = paradas.filter((p) => p.diaVisita === dia).sort((a, b) => a.orden - b.orden);
+    const parada = delDia[idx];
+    if (!parada?.id) return; // solo paradas guardadas
+    const nuevoEstado = !parada.completada;
+
+    // Optimista
+    updateDia(dia, (items) =>
+      items.map((p, i) => (i === idx ? { ...p, completada: nuevoEstado } : p))
+    );
+
+    startTransition(async () => {
+      const result = await marcarCumplimiento({ paradaId: parada.id!, completada: nuevoEstado });
+      if (!result.ok) {
+        // revertir
+        updateDia(dia, (items) =>
+          items.map((p, i) => (i === idx ? { ...p, completada: !nuevoEstado } : p))
+        );
+        setMessage(result.error ?? "No fue posible marcar la visita.");
+      }
+    });
+  }
+
   // ── Guardar / copiar ──────────────────────────────────────────────────────
 
   function guardar() {
@@ -114,6 +137,7 @@ export function PlanificadorSemanal({
         supervisorId,
         semana,
         paradas: normalizarOrden(paradas).map((p) => ({
+          id:            p.id, // undefined para paradas nuevas
           proyectoId:    p.proyectoId,
           diaVisita:     p.diaVisita,
           orden:         p.orden,
@@ -122,10 +146,8 @@ export function PlanificadorSemanal({
         })),
       });
       if (result.ok) {
-        // Actualizar originalDia para reflejar el nuevo estado guardado
-        setParadas((curr) =>
-          curr.map((p) => ({ ...p, originalDia: p.diaVisita }))
-        );
+        // No reseteamos originalDia: el cambio vs el plan original es persistente.
+        // router.refresh() trae el diaOriginal autoritativo desde la BD.
         setMessage("Ruta guardada.");
         router.refresh();
       } else {
@@ -192,9 +214,13 @@ export function PlanificadorSemanal({
 
       setParadas((curr) =>
         normalizarOrden(
-          curr.map((p) =>
-            p.tempId === tempId ? { ...p, diaVisita: targetDia } : p
-          )
+          curr.map((p) => {
+            if (p.tempId !== tempId) return p;
+            // Captura el día del plan original la 1ª vez; limpia si vuelve a él
+            const original = p.originalDia ?? p.diaVisita;
+            const nuevoOriginal = original === targetDia ? undefined : original;
+            return { ...p, diaVisita: targetDia, originalDia: nuevoOriginal };
+          })
         )
       );
     }
@@ -274,6 +300,7 @@ export function PlanificadorSemanal({
                 paradas={delDia}
                 onEliminar={(idx) => eliminar(dia, idx)}
                 onPeriodoChange={(idx, periodo) => actualizarPeriodo(dia, idx, periodo)}
+                onToggleCumplida={(idx) => toggleCumplida(dia, idx)}
               />
             );
           })}
