@@ -15,7 +15,7 @@ import { copiarSemanaAnterior, guardarRuta } from "@/lib/actions/ruta";
 import { DiaColumna } from "./DiaColumna";
 import { ProyectoPaleta } from "./ProyectoPaleta";
 import { ExportarRutaBtn } from "./ExportarRutaBtn";
-import { DIAS_PLANIFICACION, type ParadaPlan, type ProyectoOption } from "./types";
+import { DIAS_PLANIFICACION, PERIODO_ORDER, type ParadaPlan, type ProyectoOption } from "./types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,7 +29,11 @@ function normalizarOrden(paradas: ParadaPlan[]): ParadaPlan[] {
   return DIAS_PLANIFICACION.flatMap((dia) =>
     paradas
       .filter((p) => p.diaVisita === dia)
-      .sort((a, b) => a.orden - b.orden)
+      .sort((a, b) => {
+        const oa = PERIODO_ORDER[a.horaEstimada ?? ""] ?? 99;
+        const ob = PERIODO_ORDER[b.horaEstimada ?? ""] ?? 99;
+        return oa - ob;
+      })
       .map((p, i) => ({ ...p, orden: i }))
   );
 }
@@ -91,33 +95,13 @@ export function PlanificadorSemanal({
     });
   }
 
-  function subir(dia: DiaSemana, idx: number) {
-    updateDia(dia, (items) => {
-      if (idx <= 0) return items;
-      const next = [...items];
-      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-      return next;
-    });
-  }
-
-  function bajar(dia: DiaSemana, idx: number) {
-    updateDia(dia, (items) => {
-      if (idx >= items.length - 1) return items;
-      const next = [...items];
-      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-      return next;
-    });
-  }
-
   function eliminar(dia: DiaSemana, idx: number) {
     updateDia(dia, (items) => items.filter((_, i) => i !== idx));
   }
 
-  function actualizarHora(dia: DiaSemana, idx: number, hora: string) {
+  function actualizarPeriodo(dia: DiaSemana, idx: number, periodo: string | null) {
     updateDia(dia, (items) =>
-      items.map((p, i) =>
-        i === idx ? { ...p, horaEstimada: hora || null } : p
-      )
+      items.map((p, i) => (i === idx ? { ...p, horaEstimada: periodo } : p))
     );
   }
 
@@ -288,10 +272,8 @@ export function PlanificadorSemanal({
                 key={dia}
                 dia={dia}
                 paradas={delDia}
-                onSubir={(idx) => subir(dia, idx)}
-                onBajar={(idx) => bajar(dia, idx)}
                 onEliminar={(idx) => eliminar(dia, idx)}
-                onHoraChange={(idx, hora) => actualizarHora(dia, idx, hora)}
+                onPeriodoChange={(idx, periodo) => actualizarPeriodo(dia, idx, periodo)}
               />
             );
           })}

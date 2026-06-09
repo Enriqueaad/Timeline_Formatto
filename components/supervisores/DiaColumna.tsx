@@ -7,15 +7,13 @@ import { DIA_LABEL } from "./types";
 import { ParadaCard } from "./ParadaCard";
 
 type DiaColumnaProps = {
-  dia:           DiaSemana;
-  paradas:       ParadaPlan[];
-  onSubir:       (idx: number) => void;
-  onBajar:       (idx: number) => void;
-  onEliminar:    (idx: number) => void;
-  onHoraChange:  (idx: number, hora: string) => void;
+  dia:             DiaSemana;
+  paradas:         ParadaPlan[];
+  onEliminar:      (idx: number) => void;
+  onPeriodoChange: (idx: number, periodo: string | null) => void;
 };
 
-export function DiaColumna({ dia, paradas, onSubir, onBajar, onEliminar, onHoraChange }: DiaColumnaProps) {
+export function DiaColumna({ dia, paradas, onEliminar, onPeriodoChange }: DiaColumnaProps) {
   const { setNodeRef, isOver } = useDroppable({ id: dia });
 
   return (
@@ -26,7 +24,7 @@ export function DiaColumna({ dia, paradas, onSubir, onBajar, onEliminar, onHoraC
         isOver ? "bg-primary/5 border-primary" : "bg-white border-border",
       ].join(" ")}
     >
-      {/* Header día */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-2xs font-semibold uppercase tracking-widest text-formatto-bark">
           {DIA_LABEL[dia]}
@@ -36,7 +34,7 @@ export function DiaColumna({ dia, paradas, onSubir, onBajar, onEliminar, onHoraC
         )}
       </div>
 
-      {/* Zona de drop */}
+      {/* Paradas */}
       <div className="flex flex-col gap-2 flex-1">
         {paradas.length === 0 ? (
           <div
@@ -54,10 +52,8 @@ export function DiaColumna({ dia, paradas, onSubir, onBajar, onEliminar, onHoraC
             <ParadaCard
               key={parada.tempId}
               parada={parada}
-              onSubir={() => onSubir(index)}
-              onBajar={() => onBajar(index)}
               onEliminar={() => onEliminar(index)}
-              onHoraChange={(hora) => onHoraChange(index, hora)}
+              onPeriodoChange={(periodo) => onPeriodoChange(index, periodo)}
             />
           ))
         )}

@@ -1,33 +1,17 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
-
-// Auto-formatea a HH:MM al escribir
-// "900" → "9:00" | "1030" → "10:30" | "230" → "23:0"
-function formatHora(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 4);
-  if (digits.length === 0) return "";
-  const first = parseInt(digits[0], 10);
-  if (first >= 3) {
-    // Hora de 1 dígito (3-9): colon tras el primer dígito
-    return digits.length === 1 ? digits : `${digits[0]}:${digits.slice(1, 3)}`;
-  }
-  // Hora de 2 dígitos (0-2X): colon tras los dos primeros
-  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
-}
 import type { DiaSemana } from "@prisma/client";
 import type { ParadaPlan } from "./types";
-import { DIA_ABREV } from "./types";
+import { PERIODOS, PERIODO_LABEL, DIA_ABREV } from "./types";
 
 type ParadaCardProps = {
-  parada:        ParadaPlan;
-  onSubir:       () => void;
-  onBajar:       () => void;
-  onEliminar:    () => void;
-  onHoraChange:  (hora: string) => void;
+  parada:          ParadaPlan;
+  onEliminar:      () => void;
+  onPeriodoChange: (periodo: string | null) => void;
 };
 
-export function ParadaCard({ parada, onSubir, onBajar, onEliminar, onHoraChange }: ParadaCardProps) {
+export function ParadaCard({ parada, onEliminar, onPeriodoChange }: ParadaCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id:   parada.tempId ?? parada.proyectoId,
     data: { type: "parada", tempId: parada.tempId, diaOrigen: parada.diaVisita },
@@ -74,36 +58,37 @@ export function ParadaCard({ parada, onSubir, onBajar, onEliminar, onHoraChange 
         </div>
       </div>
 
-      {/* Hora editable — stopPropagation para no activar drag al escribir */}
-      <input
-        type="text"
-        placeholder="HH:MM"
-        value={parada.horaEstimada ?? ""}
-        onPointerDown={(e) => e.stopPropagation()}
-        onChange={(e) => onHoraChange(formatHora(e.target.value))}
-        className="mt-1.5 w-full text-[10px] text-formatto-bark border border-border px-1.5 py-0.5 bg-white focus:outline-none focus:border-primary"
-        maxLength={5}
-      />
+      {/* Selector de periodo */}
+      <div className="flex gap-1 mt-2">
+        {PERIODOS.map((p) => {
+          const activo = parada.horaEstimada === p;
+          return (
+            <button
+              key={p}
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPeriodoChange(activo ? null : p);
+              }}
+              className={[
+                "flex-1 text-[9px] font-semibold py-0.5 border transition-colors",
+                activo
+                  ? "bg-formatto-grafito text-white border-formatto-grafito"
+                  : "bg-white text-formatto-bark border-border hover:border-formatto-grafito",
+              ].join(" ")}
+            >
+              {PERIODO_LABEL[p]}
+            </button>
+          );
+        })}
+      </div>
 
       {parada.observacion && (
-        <p className="text-[10px] text-formatto-umber mt-1 leading-tight">{parada.observacion}</p>
+        <p className="text-[10px] text-formatto-umber mt-1.5 leading-tight">
+          {parada.observacion}
+        </p>
       )}
-
-      {/* Orden dentro del día */}
-      <div className="flex justify-end gap-1 mt-2">
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onSubir(); }}
-          className="w-5 h-5 text-[10px] text-formatto-bark border border-border hover:border-primary flex items-center justify-center"
-        >↑</button>
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onBajar(); }}
-          className="w-5 h-5 text-[10px] text-formatto-bark border border-border hover:border-primary flex items-center justify-center"
-        >↓</button>
-      </div>
     </div>
   );
 }
