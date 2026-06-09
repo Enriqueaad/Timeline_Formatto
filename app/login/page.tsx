@@ -59,18 +59,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex bg-white">
-      {/* Franja imagen cocina (izquierda) */}
-      <div
-        className="hidden md:block md:w-[42%] lg:w-[45%] relative bg-formatto-grafito bg-cover bg-center"
-        style={{ backgroundImage: "url('/login-kitchen.jpg')" }}
-      >
-        <div className="absolute inset-0 bg-formatto-grafito/35" />
-        <div className="absolute bottom-0 left-0 p-10">
-          <img src="/formatto-logo-white.svg" alt="Formatto" className="h-6 w-auto mb-4" />
-          <p className="text-white/90 text-lg font-light max-w-xs leading-snug">
-            Fabricación con estándar industrial y mirada de proyecto.
-          </p>
-        </div>
+      {/* Franja brandbook (izquierda) */}
+      <div className="hidden md:flex md:w-[42%] lg:w-[45%] relative overflow-hidden">
+        <iframe
+          src="/brandbook-panel.html"
+          title="Formatto"
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          style={{ border: "none" }}
+          scrolling="no"
+        />
       </div>
 
       {/* Formulario (derecha) */}
