@@ -1,90 +1,127 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import {
+  DndContext,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import type { DiaSemana } from "@prisma/client";
 import { Button } from "@/components/ui/Button";
-import { FieldWrap, Input, Select, Textarea } from "@/components/ui/FormField";
 import { addDays, formatSemana } from "@/lib/rutas/date";
 import { copiarSemanaAnterior, guardarRuta } from "@/lib/actions/ruta";
 import { DiaColumna } from "./DiaColumna";
+import { ProyectoPaleta } from "./ProyectoPaleta";
 import { ExportarRutaBtn } from "./ExportarRutaBtn";
 import { DIAS_PLANIFICACION, type ParadaPlan, type ProyectoOption } from "./types";
 
-type PlanificadorSemanalProps = {
-  supervisorId: string;
-  supervisorNombre: string;
-  semana: string;
-  rutaActual: ParadaPlan[];
-  proyectos: ProyectoOption[];
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function normalizarOrden(paradas: ParadaPlan[]) {
+let _counter = 0;
+function nuevoTempId() {
+  _counter += 1;
+  return `tmp-${_counter}`;
+}
+
+function normalizarOrden(paradas: ParadaPlan[]): ParadaPlan[] {
   return DIAS_PLANIFICACION.flatMap((dia) =>
     paradas
-      .filter((parada) => parada.diaVisita === dia)
+      .filter((p) => p.diaVisita === dia)
       .sort((a, b) => a.orden - b.orden)
-      .map((parada, index) => ({ ...parada, orden: index }))
+      .map((p, i) => ({ ...p, orden: i }))
   );
 }
 
-export function PlanificadorSemanal({ supervisorId, supervisorNombre, semana, rutaActual, proyectos }: PlanificadorSemanalProps) {
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+type Props = {
+  supervisorId:    string;
+  supervisorNombre: string;
+  semana:          string;
+  rutaActual:      ParadaPlan[];
+  proyectos:       ProyectoOption[];
+};
+
+// ─── Componente ───────────────────────────────────────────────────────────────
+
+export function PlanificadorSemanal({
+  supervisorId,
+  supervisorNombre,
+  semana,
+  rutaActual,
+  proyectos,
+}: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [paradas, setParadas] = useState<ParadaPlan[]>(normalizarOrden(rutaActual));
-  const [proyectoId, setProyectoId] = useState(proyectos[0]?.id ?? "");
-  const [diaVisita, setDiaVisita] = useState<DiaSemana>("LUNES");
-  const [horaEstimada, setHoraEstimada] = useState("");
-  const [observacion, setObservacion] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
-  const proyectoMap = useMemo(() => new Map(proyectos.map((proyecto) => [proyecto.id, proyecto.nombre])), [proyectos]);
+  // Inicializar paradas con tempId y originalDia
+  const [paradas, setParadas] = useState<ParadaPlan[]>(() =>
+    normalizarOrden(
+      rutaActual.map((p) => ({
+        ...p,
+        tempId:      p.id ?? nuevoTempId(),
+        originalDia: p.diaVisita,
+      }))
+    )
+  );
+
+  // Estado para DragOverlay
+  const [activeItem, setActiveItem] = useState<
+    | { type: "proyecto"; proyectoId: string; proyectoNombre: string }
+    | { type: "parada"; parada: ParadaPlan }
+    | null
+  >(null);
+
+  // ── Navegación de semana ──────────────────────────────────────────────────
 
   function navegar(days: number) {
     router.push(`/supervisores/${supervisorId}/ruta?semana=${addDays(semana, days)}`);
   }
 
-  function agregarParada() {
-    const proyectoNombre = proyectoMap.get(proyectoId);
-    if (!proyectoId || !proyectoNombre) return;
-    const orden = paradas.filter((parada) => parada.diaVisita === diaVisita).length;
-    setParadas((current) => normalizarOrden([
-      ...current,
-      { proyectoId, proyectoNombre, diaVisita, orden, horaEstimada: horaEstimada || null, observacion: observacion || null },
-    ]));
-    setHoraEstimada("");
-    setObservacion("");
-  }
+  // ── Operaciones sobre paradas ─────────────────────────────────────────────
 
   function updateDia(dia: DiaSemana, updater: (items: ParadaPlan[]) => ParadaPlan[]) {
-    setParadas((current) => {
-      const other = current.filter((parada) => parada.diaVisita !== dia);
-      const dayItems = current.filter((parada) => parada.diaVisita === dia).sort((a, b) => a.orden - b.orden);
-      return normalizarOrden([...other, ...updater(dayItems)]);
+    setParadas((curr) => {
+      const otros = curr.filter((p) => p.diaVisita !== dia);
+      const delDia = curr.filter((p) => p.diaVisita === dia).sort((a, b) => a.orden - b.orden);
+      return normalizarOrden([...otros, ...updater(delDia)]);
     });
   }
 
-  function subir(dia: DiaSemana, index: number) {
+  function subir(dia: DiaSemana, idx: number) {
     updateDia(dia, (items) => {
-      if (index <= 0) return items;
+      if (idx <= 0) return items;
       const next = [...items];
-      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
       return next;
     });
   }
 
-  function bajar(dia: DiaSemana, index: number) {
+  function bajar(dia: DiaSemana, idx: number) {
     updateDia(dia, (items) => {
-      if (index >= items.length - 1) return items;
+      if (idx >= items.length - 1) return items;
       const next = [...items];
-      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
       return next;
     });
   }
 
-  function eliminar(dia: DiaSemana, index: number) {
-    updateDia(dia, (items) => items.filter((_, itemIndex) => itemIndex !== index));
+  function eliminar(dia: DiaSemana, idx: number) {
+    updateDia(dia, (items) => items.filter((_, i) => i !== idx));
   }
+
+  function actualizarHora(dia: DiaSemana, idx: number, hora: string) {
+    updateDia(dia, (items) =>
+      items.map((p, i) =>
+        i === idx ? { ...p, horaEstimada: hora || null } : p
+      )
+    );
+  }
+
+  // ── Guardar / copiar ──────────────────────────────────────────────────────
 
   function guardar() {
     setMessage(null);
@@ -92,16 +129,24 @@ export function PlanificadorSemanal({ supervisorId, supervisorNombre, semana, ru
       const result = await guardarRuta({
         supervisorId,
         semana,
-        paradas: normalizarOrden(paradas).map((parada) => ({
-          proyectoId: parada.proyectoId,
-          diaVisita: parada.diaVisita,
-          orden: parada.orden,
-          horaEstimada: parada.horaEstimada ?? undefined,
-          observacion: parada.observacion ?? undefined,
+        paradas: normalizarOrden(paradas).map((p) => ({
+          proyectoId:    p.proyectoId,
+          diaVisita:     p.diaVisita,
+          orden:         p.orden,
+          horaEstimada:  p.horaEstimada ?? undefined,
+          observacion:   p.observacion ?? undefined,
         })),
       });
-      setMessage(result.ok ? "Ruta guardada." : result.error ?? "No fue posible guardar.");
-      if (result.ok) router.refresh();
+      if (result.ok) {
+        // Actualizar originalDia para reflejar el nuevo estado guardado
+        setParadas((curr) =>
+          curr.map((p) => ({ ...p, originalDia: p.diaVisita }))
+        );
+        setMessage("Ruta guardada.");
+        router.refresh();
+      } else {
+        setMessage(result.error ?? "No fue posible guardar.");
+      }
     });
   }
 
@@ -114,62 +159,160 @@ export function PlanificadorSemanal({ supervisorId, supervisorNombre, semana, ru
     });
   }
 
+  // ── Drag & Drop ───────────────────────────────────────────────────────────
+
+  function handleDragStart(event: DragStartEvent) {
+    const data = event.active.data.current;
+    if (!data) return;
+
+    if (data.type === "proyecto") {
+      setActiveItem({ type: "proyecto", proyectoId: data.proyectoId, proyectoNombre: data.proyectoNombre });
+    } else if (data.type === "parada") {
+      const parada = paradas.find((p) => p.tempId === data.tempId);
+      if (parada) setActiveItem({ type: "parada", parada });
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveItem(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const targetDia = over.id as DiaSemana;
+    const data = active.data.current;
+    if (!data) return;
+
+    if (data.type === "proyecto") {
+      // Agregar nueva parada desde paleta
+      const tempId = nuevoTempId();
+      setParadas((curr) =>
+        normalizarOrden([
+          ...curr,
+          {
+            tempId,
+            proyectoId:    data.proyectoId,
+            proyectoNombre: data.proyectoNombre,
+            diaVisita:     targetDia,
+            orden:         curr.filter((p) => p.diaVisita === targetDia).length,
+            horaEstimada:  null,
+            observacion:   null,
+            // Sin originalDia → es nueva, no muestra indicador
+          },
+        ])
+      );
+    } else if (data.type === "parada") {
+      // Mover parada existente entre días
+      const tempId  = data.tempId as string;
+      const diaOrigen = data.diaOrigen as DiaSemana;
+      if (diaOrigen === targetDia) return;
+
+      setParadas((curr) =>
+        normalizarOrden(
+          curr.map((p) =>
+            p.tempId === tempId ? { ...p, diaVisita: targetDia } : p
+          )
+        )
+      );
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  const hayMovidos = paradas.some(
+    (p) => p.originalDia !== undefined && p.originalDia !== p.diaVisita
+  );
+
   return (
-    <div className="space-y-5">
-      <div className="bg-white border border-border p-4 rounded-none flex items-center justify-between gap-4">
-        <div>
-          <p className="text-2xs font-semibold uppercase tracking-widest text-formatto-bark">Semana</p>
-          <p className="text-sm font-semibold text-formatto-grafito">{formatSemana(semana)}</p>
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className={`space-y-4 ${isPending ? "opacity-70" : ""}`}>
+
+        {/* ── Barra superior ──────────────────────────────────────────────── */}
+        <div className="bg-white border border-border p-4 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-2xs font-semibold uppercase tracking-widest text-formatto-bark">Semana</p>
+            <p className="text-sm font-semibold text-formatto-grafito">{formatSemana(semana)}</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => navegar(-7)}
+              className="text-sm font-semibold text-formatto-bark hover:text-formatto-grafito"
+            >
+              ← Anterior
+            </button>
+            <button
+              type="button"
+              onClick={() => navegar(7)}
+              className="text-sm font-semibold text-formatto-bark hover:text-formatto-grafito"
+            >
+              Siguiente →
+            </button>
+            <Button type="button" variant="secondary" loading={isPending} onClick={copiar}>
+              Copiar semana anterior
+            </Button>
+            <Button type="button" variant="primary" loading={isPending} onClick={guardar}>
+              Guardar ruta
+            </Button>
+            <ExportarRutaBtn supervisor={supervisorNombre} semana={semana} paradas={paradas} />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => navegar(-7)} className="text-sm font-semibold text-formatto-bark hover:text-formatto-grafito">Anterior</button>
-          <button type="button" onClick={() => navegar(7)} className="text-sm font-semibold text-formatto-bark hover:text-formatto-grafito">Siguiente</button>
-          <Button type="button" variant="secondary" loading={isPending} onClick={copiar}>Copiar semana anterior</Button>
-          <Button type="button" variant="primary" loading={isPending} onClick={guardar}>Guardar ruta</Button>
-          <ExportarRutaBtn supervisor={supervisorNombre} semana={semana} paradas={paradas} />
+
+        {/* ── Mensajes ────────────────────────────────────────────────────── */}
+        {message && (
+          <div className="bg-white border border-border p-3 text-sm text-muted-foreground">
+            {message}
+          </div>
+        )}
+
+        {/* ── Indicador de cambios sin guardar ────────────────────────────── */}
+        {hayMovidos && (
+          <div className="flex items-center gap-2 text-2xs text-amber-700 bg-amber-50 border border-amber-300 px-3 py-2">
+            <span className="font-bold">⚠</span>
+            <span>Hay paradas movidas sin guardar — los badges <strong>← DÍA</strong> indican el día original.</span>
+          </div>
+        )}
+
+        {/* ── Grilla: paleta + 5 días ──────────────────────────────────────── */}
+        <div className="grid grid-cols-[180px_repeat(5,minmax(0,1fr))] gap-3">
+
+          {/* Paleta de proyectos */}
+          <ProyectoPaleta proyectos={proyectos} paradas={paradas} />
+
+          {/* Columnas de días */}
+          {DIAS_PLANIFICACION.map((dia) => {
+            const delDia = paradas
+              .filter((p) => p.diaVisita === dia)
+              .sort((a, b) => a.orden - b.orden);
+            return (
+              <DiaColumna
+                key={dia}
+                dia={dia}
+                paradas={delDia}
+                onSubir={(idx) => subir(dia, idx)}
+                onBajar={(idx) => bajar(dia, idx)}
+                onEliminar={(idx) => eliminar(dia, idx)}
+                onHoraChange={(idx, hora) => actualizarHora(dia, idx, hora)}
+              />
+            );
+          })}
         </div>
       </div>
 
-      {message && <div className="bg-white border border-border p-3 text-sm text-muted-foreground">{message}</div>}
-
-      <div className="grid grid-cols-[repeat(5,minmax(0,1fr))_260px] gap-3">
-        {DIAS_PLANIFICACION.map((dia) => {
-          const delDia = paradas.filter((parada) => parada.diaVisita === dia).sort((a, b) => a.orden - b.orden);
-          return (
-            <DiaColumna
-              key={dia}
-              dia={dia}
-              paradas={delDia}
-              onSubir={(idx) => subir(dia, idx)}
-              onBajar={(idx) => bajar(dia, idx)}
-              onEliminar={(idx) => eliminar(dia, idx)}
-            />
-          );
-        })}
-
-        <aside className="bg-white border border-border rounded-none p-4 space-y-4">
-          <p className="text-2xs font-semibold uppercase tracking-widest text-formatto-bark">Agregar parada</p>
-          <FieldWrap label="Proyecto">
-            <Select value={proyectoId} onChange={(event) => setProyectoId(event.target.value)}>
-              {proyectos.map((proyecto) => <option key={proyecto.id} value={proyecto.id}>{proyecto.nombre}</option>)}
-            </Select>
-          </FieldWrap>
-          <FieldWrap label="Dia">
-            <Select value={diaVisita} onChange={(event) => setDiaVisita(event.target.value as DiaSemana)}>
-              {DIAS_PLANIFICACION.map((dia) => <option key={dia} value={dia}>{dia}</option>)}
-            </Select>
-          </FieldWrap>
-          <FieldWrap label="Hora">
-            <Input value={horaEstimada} onChange={(event) => setHoraEstimada(event.target.value)} placeholder="09:30" />
-          </FieldWrap>
-          <FieldWrap label="Observacion">
-            <Textarea value={observacion} onChange={(event) => setObservacion(event.target.value)} />
-          </FieldWrap>
-          <Button type="button" variant="secondary" className="w-full justify-center" onClick={agregarParada} disabled={proyectos.length === 0}>
-            Agregar
-          </Button>
-        </aside>
-      </div>
-    </div>
+      {/* ── Ghost mientras se arrastra ───────────────────────────────────── */}
+      <DragOverlay>
+        {activeItem?.type === "proyecto" && (
+          <div className="bg-white border border-primary px-2 py-2 text-xs font-semibold text-formatto-grafito shadow-lg cursor-grabbing">
+            {activeItem.proyectoNombre.length > 22
+              ? activeItem.proyectoNombre.slice(0, 21) + "…"
+              : activeItem.proyectoNombre}
+          </div>
+        )}
+        {activeItem?.type === "parada" && (
+          <div className="bg-white border border-primary px-2.5 py-2 text-xs font-semibold text-formatto-grafito shadow-lg cursor-grabbing rotate-1">
+            {activeItem.parada.proyectoNombre}
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
   );
 }
