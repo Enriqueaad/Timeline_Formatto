@@ -9,7 +9,7 @@ export function Punto({ className }: { className?: string }) {
     <span
       aria-hidden
       className={cn("inline-block bg-primary align-baseline", className)}
-      style={{ width: "0.5em", height: "0.5em" }}
+      style={{ width: "0.5em", height: "0.5em", transform: "translateY(0.12em)" }}
     />
   );
 }
