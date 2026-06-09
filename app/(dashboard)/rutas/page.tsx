@@ -20,33 +20,53 @@ export default async function RutasPage({
   const semana = toLunes(first(search.semana) ?? new Date());
 
   try {
-    const supervisores = await prisma.supervisor.findMany({
-      where: { activo: true },
-      orderBy: { nombre: "asc" },
-      include: {
-        rutas: {
-          where: { semana: new Date(`${semana}T00:00:00`) },
-          include: {
-            paradas: {
-              include: { proyecto: { select: { nombre: true } } },
-              orderBy: [{ diaVisita: "asc" }, { orden: "asc" }],
+    // Consulta paralela: supervisores con rutas + asignaciones formales activas
+    const [supervisores, asignacionesFormales] = await Promise.all([
+      prisma.supervisor.findMany({
+        where: { activo: true },
+        orderBy: { nombre: "asc" },
+        include: {
+          rutas: {
+            where: { semana: new Date(`${semana}T00:00:00`) },
+            include: {
+              paradas: {
+                include: { proyecto: { select: { nombre: true } } },
+                orderBy: [{ diaVisita: "asc" }, { orden: "asc" }],
+              },
             },
           },
         },
-      },
-    });
+      }),
+      // Mapa de asignaciones oficiales activas: proyectoId → supervisorId asignado
+      prisma.asignacionSupervisor.findMany({
+        where: { hasta: null },
+        select: { proyectoId: true, supervisorId: true },
+      }),
+    ]);
+
+    // Map: proyectoId → supervisorId oficial
+    const asignacionMap = new Map(
+      asignacionesFormales.map((a) => [a.proyectoId, a.supervisorId])
+    );
 
     const rows: SupervisorRow[] = supervisores.map((s) => {
       const paradas = s.rutas[0]?.paradas ?? [];
+
       const chips = (dia: string) =>
         paradas
           .filter((p) => p.diaVisita === dia)
-          .map((p) => ({
-            id:              p.id,
-            proyectoId:      p.proyectoId,
-            proyectoNombre:  p.proyecto.nombre,
-            horaEstimada:    p.horaEstimada,
-          }));
+          .map((p) => {
+            const supervisorAsignado = asignacionMap.get(p.proyectoId);
+            return {
+              id:             p.id,
+              proyectoId:     p.proyectoId,
+              proyectoNombre: p.proyecto.nombre,
+              horaEstimada:   p.horaEstimada,
+              // Fuera de plan: el proyecto tiene asignado oficial y NO es este supervisor
+              esFueraDePlan:
+                supervisorAsignado !== undefined && supervisorAsignado !== s.id,
+            };
+          });
 
       return {
         id:        s.id,
@@ -63,7 +83,8 @@ export default async function RutasPage({
     return (
       <>
         <PageHeader eyebrow="Planificacion" title="Rutas de Visita" />
-        <RutasPanel semana={semana} rows={rows} />
+        {/* key={semana} fuerza re-mount al cambiar semana → reinicia estado DnD */}
+        <RutasPanel key={semana} semana={semana} rows={rows} />
       </>
     );
   } catch (error) {

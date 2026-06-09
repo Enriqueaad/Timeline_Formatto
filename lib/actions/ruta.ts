@@ -53,6 +53,51 @@ export async function guardarRuta(data: {
   }
 }
 
+export async function moverParada(data: {
+  paradaId: string;
+  targetSupervisorId: string;
+  targetDia: DiaSemana;
+  semana: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await prisma.$transaction(async (tx) => {
+      const parada = await tx.paradaRuta.findUniqueOrThrow({
+        where: { id: data.paradaId },
+        include: { ruta: true },
+      });
+
+      const semanaDate = new Date(`${toLunes(data.semana)}T00:00:00`);
+
+      if (parada.ruta.supervisorId === data.targetSupervisorId) {
+        // Mismo supervisor — solo cambia el día
+        await tx.paradaRuta.update({
+          where: { id: data.paradaId },
+          data: { diaVisita: data.targetDia },
+        });
+      } else {
+        // Distinto supervisor — buscar o crear RutaVisita del destino
+        let targetRuta = await tx.rutaVisita.findFirst({
+          where: { supervisorId: data.targetSupervisorId, semana: semanaDate },
+        });
+        if (!targetRuta) {
+          targetRuta = await tx.rutaVisita.create({
+            data: { supervisorId: data.targetSupervisorId, semana: semanaDate },
+          });
+        }
+        await tx.paradaRuta.update({
+          where: { id: data.paradaId },
+          data: { rutaId: targetRuta.id, diaVisita: data.targetDia },
+        });
+      }
+    });
+
+    revalidatePath("/rutas");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "No fue posible mover la visita." };
+  }
+}
+
 export async function copiarSemanaAnterior(data: {
   supervisorId: string;
   semanaActual: string;
