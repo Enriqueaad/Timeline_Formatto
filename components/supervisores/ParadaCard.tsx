@@ -1,6 +1,20 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
+
+// Auto-formatea a HH:MM al escribir
+// "900" → "9:00" | "1030" → "10:30" | "230" → "23:0"
+function formatHora(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length === 0) return "";
+  const first = parseInt(digits[0], 10);
+  if (first >= 3) {
+    // Hora de 1 dígito (3-9): colon tras el primer dígito
+    return digits.length === 1 ? digits : `${digits[0]}:${digits.slice(1, 3)}`;
+  }
+  // Hora de 2 dígitos (0-2X): colon tras los dos primeros
+  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
+}
 import type { DiaSemana } from "@prisma/client";
 import type { ParadaPlan } from "./types";
 import { DIA_ABREV } from "./types";
@@ -66,7 +80,7 @@ export function ParadaCard({ parada, onSubir, onBajar, onEliminar, onHoraChange 
         placeholder="HH:MM"
         value={parada.horaEstimada ?? ""}
         onPointerDown={(e) => e.stopPropagation()}
-        onChange={(e) => onHoraChange(e.target.value)}
+        onChange={(e) => onHoraChange(formatHora(e.target.value))}
         className="mt-1.5 w-full text-[10px] text-formatto-bark border border-border px-1.5 py-0.5 bg-white focus:outline-none focus:border-primary"
         maxLength={5}
       />
