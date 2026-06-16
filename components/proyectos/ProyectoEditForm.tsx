@@ -14,7 +14,7 @@ const EditSchema = z.object({
   torre: z.string().optional(),
   finEstimado: z.string().optional(),
   observacion: z.string().optional(),
-  estado: z.enum(["ACTIVO", "PAUSADO", "TERMINADO"]),
+  estado: z.enum(["ACTIVO", "PAUSADO", "TERMINADO", "CANCELADO"]),
 });
 
 type EditData = z.infer<typeof EditSchema>;
@@ -27,7 +27,7 @@ type ProyectoEditFormProps = {
     torre: string | null;
     finEstimado: string | null;
     observacion: string | null;
-    estado: "ACTIVO" | "PAUSADO" | "TERMINADO";
+    estado: "ACTIVO" | "PAUSADO" | "TERMINADO" | "CANCELADO";
   };
 };
 
@@ -79,6 +79,7 @@ export function ProyectoEditForm({ proyecto }: ProyectoEditFormProps) {
             <option value="ACTIVO">ACTIVO</option>
             <option value="PAUSADO">PAUSADO</option>
             <option value="TERMINADO">TERMINADO</option>
+            <option value="CANCELADO">CANCELADO</option>
           </Select>
         </FieldWrap>
         <FieldWrap label="Constructora">

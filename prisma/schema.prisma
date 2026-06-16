@@ -91,6 +91,7 @@ enum EstadoProyecto {
   ACTIVO
   PAUSADO
   TERMINADO
+  CANCELADO
 }
 
 // ─── EXCEL ─────────────────────────────────────────────────────────────────
@@ -118,18 +119,34 @@ enum TipoArchivo {
 // ─── UNIDADES / DEPARTAMENTOS ──────────────────────────────────────────────
 
 model Unidad {
-  id         String   @id @default(cuid())
+  id         String       @id @default(cuid())
   proyectoId String
-  proyecto   Proyecto @relation(fields: [proyectoId], references: [id])
+  proyecto   Proyecto     @relation(fields: [proyectoId], references: [id])
   piso       String
   dpto       String
   torre      String?
   tipo       String?
-  creadoEn   DateTime @default(now())
+  estado     EstadoUnidad @default(PENDIENTE)
+  creadoEn   DateTime     @default(now())
 
   items ItemInstalacion[]
 
   @@unique([proyectoId, piso, dpto, torre])
+}
+
+enum EstadoUnidad {
+  PENDIENTE
+  EN_PROCESO
+  COMPLETADA
+  CON_OBSERVACION
+}
+
+enum TipoMueble {
+  COCINA
+  CLOSET_INTERIOR
+  PIERNAS
+  QUINCALLERIA
+  OTRO
 }
 
 model ItemInstalacion {
@@ -139,6 +156,7 @@ model ItemInstalacion {
   sku           String?
   descripcion   String?
   subconjunto   String?
+  tipoMueble    TipoMueble       @default(OTRO)
   cantidad      Int              @default(1)
   costo         Float?
   etapa         EtapaInstalacion @default(PEDIDO)
@@ -146,6 +164,26 @@ model ItemInstalacion {
   actualizadoEn DateTime         @updatedAt
 
   historial HistorialEtapa[]
+  receta    RecetaItem[]
+}
+
+model RecetaItem {
+  id              String          @id @default(cuid())
+  itemId          String
+  item            ItemInstalacion @relation(fields: [itemId], references: [id])
+  codMaterial     String
+  descripMaterial String?
+  material        String?
+  colorMaterial   String?
+  espesor         String?
+  codTapacanto    String?
+  descTapacanto   String?
+  largo           Float?
+  ancho           Float?
+  cantUni         Float?
+  veta            String?
+  piezaInsumo     String?
+  codPrograma     String?
 }
 
 model HistorialEtapa {
