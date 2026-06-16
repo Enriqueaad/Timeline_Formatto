@@ -1,8 +1,9 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSupabaseAdmin } from "@/lib/supabase";
-import { parseWorkbook, readWorkbook } from "@/lib/excel/detector";
-import type { TipoExcel, UnidadParseada } from "@/lib/excel/types";
+import { parseWorkbookFromBuffer } from "@/lib/excel/detector";
+import { persistirCargaExcel } from "@/lib/excel/persistir";
+import type { TipoExcel } from "@/lib/excel/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,10 +32,6 @@ function tipoArchivo(tipo: TipoExcel) {
   return tipo === "OTRO" ? "OTRO" : tipo;
 }
 
-function tiposUnidad(unidades: UnidadParseada[]) {
-  return Array.from(new Set(unidades.map((unidad) => unidad.tipo).filter(Boolean))) as string[];
-}
-
 export async function POST(request: Request) {
   try {
     const form = await request.formData();
@@ -42,14 +39,15 @@ export async function POST(request: Request) {
     const proyectoId = String(form.get("proyectoId") ?? "");
     const modo = String(form.get("modo") ?? "agregar") as ModoCarga;
     const cargadoPor = String(form.get("cargadoPor") ?? "sistema");
+    // Cuántas torres físicas confirmó el usuario (default 1 → torre = null para todos).
+    const torresConfirmadas = Math.max(1, Math.round(Number(form.get("torresConfirmadas") ?? 1)) || 1);
 
     if (!(file instanceof File)) return NextResponse.json({ error: "Falta archivo Excel." }, { status: 400 });
     if (!proyectoId) return NextResponse.json({ error: "Falta proyectoId." }, { status: 400 });
     if (modo !== "reemplazar" && modo !== "agregar") return NextResponse.json({ error: "Modo invalido." }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const workbook = readWorkbook(buffer);
-    const result = parseWorkbook(workbook);
+    const result = parseWorkbookFromBuffer(buffer);
     if (result.error || result.tipo === "OTRO") {
       return NextResponse.json({ error: result.error ?? "Tipo de Excel no soportado." }, { status: 400 });
     }
@@ -58,91 +56,34 @@ export async function POST(request: Request) {
     if (!proyecto) return NextResponse.json({ error: "Proyecto no encontrado." }, { status: 404 });
 
     const urlBlob = await uploadOriginalFile(proyectoId, file, buffer);
-    const unitTipos = tiposUnidad(result.unidades);
-    let unidadesCargadas = 0;
-    let itemsCargados = 0;
 
-    await prisma.$transaction(async (tx) => {
-      if (modo === "reemplazar") {
-        const unidadesPrevias = await tx.unidad.findMany({
-          where: {
-            proyectoId,
-            OR: [
-              ...(result.tipo === "COCINA" ? [{ tipo: { startsWith: "CO_" } }, { tipo: { in: unitTipos } }] : []),
-              ...(result.tipo === "PIERNAS" ? [{ items: { some: { subconjunto: { equals: "PIERNAS" } } } }] : []),
-              ...(result.tipo === "CLOSET_INTERIOR" ? [{ items: { some: { NOT: { subconjunto: { equals: "PIERNAS" } } } } }] : []),
-            ],
-          },
-          select: { id: true },
-        });
-        const unidadIds = unidadesPrevias.map((unidad) => unidad.id);
-        if (unidadIds.length > 0) {
-          const itemsPrevios = await tx.itemInstalacion.findMany({ where: { unidadId: { in: unidadIds } }, select: { id: true } });
-          const itemIds = itemsPrevios.map((item) => item.id);
-          if (itemIds.length > 0) await tx.historialEtapa.deleteMany({ where: { itemId: { in: itemIds } } });
-          await tx.itemInstalacion.deleteMany({ where: { unidadId: { in: unidadIds } } });
-          await tx.unidad.deleteMany({ where: { id: { in: unidadIds } } });
-        }
-      }
-
-      for (const unidad of result.unidades) {
-        const existente = await tx.unidad.findFirst({
-          where: {
-            proyectoId,
-            piso: unidad.piso,
-            dpto: unidad.dpto,
-            torre: unidad.torre ?? null,
-          },
-          select: { id: true },
-        });
-
-        const savedUnidad = existente
-          ? await tx.unidad.update({
-              where: { id: existente.id },
-              data: { tipo: unidad.tipo ?? null, torre: unidad.torre ?? null },
-              select: { id: true },
-            })
-          : await tx.unidad.create({
-              data: {
-                proyectoId,
-                piso: unidad.piso,
-                dpto: unidad.dpto,
-                torre: unidad.torre ?? null,
-                tipo: unidad.tipo ?? null,
-              },
-              select: { id: true },
-            });
-
-        unidadesCargadas += existente ? 0 : 1;
-        if (unidad.items.length > 0) {
-          await tx.itemInstalacion.createMany({
-            data: unidad.items.map((item) => ({
-              unidadId: savedUnidad.id,
-              sku: item.sku ?? null,
-              descripcion: item.descripcion ?? null,
-              subconjunto: item.subconjunto ?? null,
-              cantidad: item.cantidad,
-              costo: item.costo ?? null,
-            })),
-          });
-          itemsCargados += unidad.items.length;
-        }
-      }
-
-      await tx.archivoExcel.create({
-        data: {
-          proyectoId,
-          tipo: tipoArchivo(result.tipo),
-          nombreOriginal: file.name,
-          urlBlob,
-          filasLeidas: result.filasLeidas,
-          unidadesDetectadas: result.unidades.length,
-          cargadoPor,
-        },
-      });
+    const { unidadesNuevas, items, recetas } = await persistirCargaExcel(prisma, {
+      proyectoId,
+      result,
+      modo,
+      torresConfirmadas,
     });
 
-    return NextResponse.json({ ok: true, unidades: result.unidades.length, unidadesNuevas: unidadesCargadas, items: itemsCargados });
+    // Registro del archivo cargado (fuera de la transacción de datos).
+    await prisma.archivoExcel.create({
+      data: {
+        proyectoId,
+        tipo: tipoArchivo(result.tipo),
+        nombreOriginal: file.name,
+        urlBlob,
+        filasLeidas: result.filasLeidas,
+        unidadesDetectadas: result.unidades.length,
+        cargadoPor,
+      },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      unidades: result.unidades.length,
+      unidadesNuevas,
+      items,
+      recetas,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "No fue posible cargar el archivo." },
@@ -150,4 +91,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

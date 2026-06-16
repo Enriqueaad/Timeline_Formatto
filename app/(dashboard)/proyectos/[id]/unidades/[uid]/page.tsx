@@ -14,6 +14,7 @@ import {
 import { PipelineVisual } from "@/components/instalacion/PipelineVisual";
 import { AvanzarEtapaBtn } from "@/components/instalacion/AvanzarEtapaBtn";
 import { HistorialEtapa } from "@/components/instalacion/HistorialEtapa";
+import { VerRecetaBtn } from "@/components/instalacion/VerRecetaBtn";
 import { prisma } from "@/lib/prisma";
 import { FLUJO_PRINCIPAL, conteosPorEtapa } from "@/lib/instalacion/utils";
 
@@ -57,6 +58,7 @@ export default async function UnidadDetallePage({ params }: { params: Promise<{ 
           orderBy: [{ subconjunto: "asc" }, { sku: "asc" }],
           include: {
             historial: { orderBy: { fecha: "desc" } },
+            receta: true,
           },
         },
       },
@@ -131,12 +133,15 @@ export default async function UnidadDetallePage({ params }: { params: Promise<{ 
                       <TableCell className="text-right">{formatCLP(item.costo)}</TableCell>
                       <TableCell><EtapaBadge etapa={item.etapa} /></TableCell>
                       <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <VerRecetaBtn titulo={item.sku ?? item.descripcion ?? "Item"} receta={item.receta} />
                           <AvanzarEtapaBtn
                             itemId={item.id}
                             etapaActual={item.etapa}
                             usuario={usuario}
                             etapaRetorno={etapaRetorno(item.historial)}
                           />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

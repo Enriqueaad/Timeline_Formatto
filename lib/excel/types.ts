@@ -2,6 +2,30 @@
 
 export type TipoExcel = "COCINA" | "CLOSET_INTERIOR" | "PIERNAS" | "OTRO";
 
+// Coincide con el enum TipoMueble de Prisma.
+export type TipoMuebleParsed =
+  | "COCINA"
+  | "CLOSET_INTERIOR"
+  | "PIERNAS"
+  | "QUINCALLERIA"
+  | "OTRO";
+
+export type RecetaParseada = {
+  codMaterial: string;
+  descripMaterial?: string | null;
+  material?: string | null;
+  colorMaterial?: string | null;
+  espesor?: string | null;
+  codTapacanto?: string | null;
+  descTapacanto?: string | null;
+  largo?: number | null;
+  ancho?: number | null;
+  cantUni?: number | null;
+  veta?: string | null;
+  piezaInsumo?: string | null;
+  codPrograma?: string | null;
+};
+
 export type UnidadParseada = {
   piso: string;
   dpto: string;
@@ -14,14 +38,18 @@ export type ItemParseado = {
   sku?: string | null;
   descripcion?: string | null;
   subconjunto?: string | null;
+  tipoMueble?: TipoMuebleParsed;
   cantidad: number;
   costo?: number | null;
+  fichaCodigo?: string | null;   // código de ficha (Cxx) para closet/piernas
+  receta?: RecetaParseada[];     // piezas de receta (cocina: hoja RECETA)
 };
 
 export type ResultadoParseo = {
   tipo: TipoExcel;
   unidades: UnidadParseada[];
   filasLeidas: number;
+  torresDetectadas?: string[];   // valores raw del campo TORRE (closet/piernas)
   error?: string;
 };
 
@@ -36,6 +64,7 @@ export type PreviewResponse = {
     totalItems: number;
     tipos: string[];
   };
+  torres_detectadas: string[];
   error?: string;
 };
 
@@ -73,4 +102,14 @@ export function toNumber(value: unknown, fallback = 0) {
   const clean = String(value).replace(/\./g, "").replace(/,/g, ".").replace(/[^0-9.-]/g, "");
   const parsed = Number(clean);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+// Igual que toNumber pero devuelve null cuando no hay valor numérico (para campos opcionales).
+export function toNumberOrNull(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const clean = String(value).replace(/\./g, "").replace(/,/g, ".").replace(/[^0-9.-]/g, "");
+  if (clean === "" || clean === "-") return null;
+  const parsed = Number(clean);
+  return Number.isFinite(parsed) ? parsed : null;
 }

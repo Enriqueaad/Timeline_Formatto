@@ -39,13 +39,19 @@ export function ProyectoCargaForm({ proyectoId, proyectoNombre, tiposExistentes 
   const [uploading, setUploading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [torresConfirmadas, setTorresConfirmadas] = useState<number | null>(null);
 
   const tipoRepetido = Boolean(preview && tiposExistentes.includes(preview.tipo));
+  // Si el Excel trae más de un valor en el campo TORRE, el usuario debe confirmar
+  // cuántas torres físicas tiene el proyecto antes de cargar.
+  const requiereTorres = Boolean(preview && preview.torres_detectadas.length > 1);
+  const torresOk = !requiereTorres || (torresConfirmadas !== null && torresConfirmadas >= 1);
 
   async function handleFile(nextFile: File) {
     setFile(nextFile);
     setPreview(null);
     setMessage(null);
+    setTorresConfirmadas(null);
     setPreviewLoading(true);
     try {
       setPreview(await previewExcel(nextFile));
@@ -67,6 +73,7 @@ export function ProyectoCargaForm({ proyectoId, proyectoNombre, tiposExistentes 
       form.append("proyectoId", proyectoId);
       form.append("modo", modo);
       form.append("cargadoPor", session?.user?.email ?? "sistema");
+      form.append("torresConfirmadas", String(torresConfirmadas ?? 1));
       const response = await fetch("/api/excel/upload", { method: "POST", body: form });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "No fue posible cargar el archivo.");
@@ -98,10 +105,43 @@ export function ProyectoCargaForm({ proyectoId, proyectoNombre, tiposExistentes 
       <DropZone onFile={handleFile} disabled={uploading} />
       <ExcelPreview data={preview} loading={previewLoading} />
 
+      {requiereTorres && preview && (
+        <div className="bg-white border border-amber-300 p-4 space-y-3">
+          <div>
+            <p className="text-2xs font-semibold uppercase tracking-widest text-amber-700 mb-1">Confirmación de torres</p>
+            <p className="text-sm text-formatto-umber">
+              Se detectaron estos valores en el campo Torre:{" "}
+              <span className="font-semibold text-formatto-grafito">{preview.torres_detectadas.join(", ")}</span>.
+              ¿Cuántas torres físicas tiene este proyecto?
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min={1}
+              value={torresConfirmadas ?? ""}
+              onChange={(e) => {
+                const n = parseInt(e.target.value, 10);
+                setTorresConfirmadas(Number.isFinite(n) && n >= 1 ? n : null);
+              }}
+              placeholder="N°"
+              className="h-10 w-24 rounded-sm border border-input bg-background px-3 text-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <span className="text-2xs text-formatto-bark">
+              {torresConfirmadas === 1
+                ? "1 torre → el campo Torre se guardará vacío."
+                : torresConfirmadas && torresConfirmadas > 1
+                  ? `${torresConfirmadas} torres → se conservará el valor del campo como identificador.`
+                  : "Ingresa un número para continuar."}
+            </span>
+          </div>
+        </div>
+      )}
+
       {message && <div className="bg-white border border-border p-4 text-sm text-formatto-umber">{message}</div>}
 
       <div className="flex justify-end">
-        <Button type="button" onClick={confirmUpload} disabled={!file || !preview || uploading} loading={uploading}>
+        <Button type="button" onClick={confirmUpload} disabled={!file || !preview || uploading || !torresOk} loading={uploading}>
           Confirmar carga
         </Button>
       </div>

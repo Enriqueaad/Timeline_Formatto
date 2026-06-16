@@ -1,9 +1,13 @@
-﻿import * as XLSX from "xlsx";
+import * as XLSX from "xlsx";
 import { getField, toNumber, toText, type ResultadoParseo, type TipoExcel, type UnidadParseada } from "../types";
+import { parseCocinaReceta } from "./cocina-receta";
 
 export function parseCocina(workbook: XLSX.WorkBook, tipo: TipoExcel = "COCINA"): ResultadoParseo {
   const sheet = workbook.Sheets.NV_RTA;
   if (!sheet) return { tipo, unidades: [], filasLeidas: 0, error: "No se encontro la hoja NV_RTA." };
+
+  // Mapa de recetas por SKU (hoja RECETA del mismo archivo). SKU sin receta → no aparece.
+  const recetas = parseCocinaReceta(workbook);
 
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null, raw: false });
   const unidades = new Map<string, UnidadParseada>();
@@ -32,7 +36,15 @@ export function parseCocina(workbook: XLSX.WorkBook, tipo: TipoExcel = "COCINA")
     if (current) {
       current.cantidad += cantidad;
     } else {
-      unidad.items.push({ sku, descripcion, subconjunto, cantidad, costo: null });
+      unidad.items.push({
+        sku,
+        descripcion,
+        subconjunto,
+        tipoMueble: "COCINA",
+        cantidad,
+        costo: null,
+        receta: sku ? recetas.get(sku) ?? [] : [],
+      });
     }
 
     unidades.set(unitKey, unidad);

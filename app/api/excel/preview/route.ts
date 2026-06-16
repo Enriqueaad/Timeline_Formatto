@@ -1,11 +1,11 @@
 ﻿import { NextResponse } from "next/server";
-import { parseWorkbook, readWorkbook } from "@/lib/excel/detector";
+import { parseWorkbookFromBuffer } from "@/lib/excel/detector";
 import type { PreviewResponse, PreviewRow } from "@/lib/excel/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function buildPreview(result: ReturnType<typeof parseWorkbook>): PreviewResponse {
+function buildPreview(result: ReturnType<typeof parseWorkbookFromBuffer>): PreviewResponse {
   const preview: PreviewRow[] = result.unidades.flatMap((unidad) =>
     unidad.items.map((item) => ({
       piso: unidad.piso,
@@ -29,6 +29,7 @@ function buildPreview(result: ReturnType<typeof parseWorkbook>): PreviewResponse
     unidades: result.unidades.length,
     preview,
     resumen: { totalItems, tipos },
+    torres_detectadas: result.torresDetectadas ?? [],
     error: result.error,
   };
 }
@@ -42,8 +43,7 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const workbook = readWorkbook(buffer);
-    const result = parseWorkbook(workbook);
+    const result = parseWorkbookFromBuffer(buffer);
     if (result.error && result.tipo === "OTRO") {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
