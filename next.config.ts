@@ -2,7 +2,7 @@
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ["xlsx", "@react-pdf/renderer"],
+  serverExternalPackages: ["xlsx", "@react-pdf/renderer", "unpdf"],
 };
 
 export default nextConfig;

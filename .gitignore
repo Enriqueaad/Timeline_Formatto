@@ -23,3 +23,6 @@ Base de Datos - APP/
 
 # Build artifacts
 tsconfig.tsbuildinfo
+
+# Dev server log
+devserver.log

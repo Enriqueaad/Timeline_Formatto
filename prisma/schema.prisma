@@ -88,6 +88,7 @@ model Proyecto {
   paradasRuta            ParadaRuta[]
   subcontratos           Subcontrato[]
   asignacionesSupervisor AsignacionSupervisor[]
+  cotizacion             Cotizacion?
 }
 
 enum EstadoProyecto {
@@ -95,6 +96,49 @@ enum EstadoProyecto {
   PAUSADO
   TERMINADO
   CANCELADO
+}
+
+// ─── VENTA / PRESUPUESTO (etapa 3 del onboarding) ──────────────────────────
+
+model Cotizacion {
+  id               String        @id @default(cuid())
+  proyectoId       String        @unique
+  proyecto         Proyecto      @relation(fields: [proyectoId], references: [id])
+  fecha            DateTime?
+  valorUF          Float?        // valor de la UF usado en la cotización
+  clienteContacto  String?
+  clienteCorreo    String?
+  clienteTelefono  String?
+  totalCLP         Float?        // suma de líneas en pesos
+  totalUF          Float?        // suma de líneas en UF
+  pdfUrl           String?       // PDF original en storage
+  creadoEn         DateTime      @default(now())
+  actualizadoEn    DateTime      @updatedAt
+
+  lineas PrecioVenta[]
+}
+
+model PrecioVenta {
+  id              String         @id @default(cuid())
+  cotizacionId    String
+  cotizacion      Cotizacion     @relation(fields: [cotizacionId], references: [id])
+  categoria       CategoriaVenta
+  tipologia       String?        // CO 01, WCL 01, CL 02, etc.
+  descripcion     String?
+  cantidad        Int            @default(1)
+  valorUnitario   Float          // CLP
+  valorUnitarioUF Float?
+  total           Float          // CLP (cantidad × valorUnitario)
+  totalUF         Float?
+  orden           Int            @default(0)
+}
+
+enum CategoriaVenta {
+  COCINA
+  CLOSET
+  ADICIONAL
+  INSTALACION
+  OTRO
 }
 
 // ─── EXCEL ─────────────────────────────────────────────────────────────────

@@ -23,6 +23,11 @@ function formatDate(value: Date | null) {
   return new Intl.DateTimeFormat("es-CL", { day: "2-digit", month: "short", year: "numeric" }).format(value);
 }
 
+function formatCLP(value: number | null | undefined) {
+  if (value == null) return "-";
+  return new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value);
+}
+
 function dateInput(value: Date | null) {
   if (!value) return null;
   return value.toISOString().slice(0, 10);
@@ -43,6 +48,7 @@ export default async function ProyectoDetallePage({ params }: { params: Promise<
             where: { hasta: null },
             include: { supervisor: { select: { id: true, nombre: true } } },
           },
+          cotizacion: { select: { id: true, totalCLP: true, totalUF: true } },
         },
       }),
       prisma.supervisor.findMany({ where: { activo: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
@@ -70,6 +76,7 @@ export default async function ProyectoDetallePage({ params }: { params: Promise<
 
   // Estado de etapas (derivado de los datos).
   const tieneEstructura = proyecto.unidades.length > 0;
+  const tieneVenta = Boolean(proyecto.cotizacion);
   const tieneDefiniciones = Boolean(
     proyecto.fechaInicio && proyecto.tasaInstalacion && proyecto.dotacionProyectada && supervisorActivo
   );
@@ -89,9 +96,12 @@ export default async function ProyectoDetallePage({ params }: { params: Promise<
     {
       n: 3,
       titulo: "Venta / Presupuesto",
-      descripcion: "Precios de venta del proyecto (desde PDF).",
-      completa: false,
-      proximamente: true,
+      descripcion: tieneVenta
+        ? `Total ${proyecto.cotizacion?.totalUF ? `${proyecto.cotizacion.totalUF.toFixed(0)} UF` : ""} cargado.`
+        : "Carga los precios de venta de la cotización.",
+      completa: tieneVenta,
+      href: `/proyectos/${proyecto.id}/venta`,
+      cta: tieneVenta ? "Editar venta" : "Cargar venta",
     },
     {
       n: 4,
@@ -161,6 +171,12 @@ export default async function ProyectoDetallePage({ params }: { params: Promise<
           <p><span className="font-semibold text-formatto-grafito">Fin estimado:</span> {formatDate(proyecto.finEstimado)}</p>
           <p><span className="font-semibold text-formatto-grafito">Tasa instalación:</span> {proyecto.tasaInstalacion ? `${proyecto.tasaInstalacion} deptos/día` : "-"}</p>
           <p><span className="font-semibold text-formatto-grafito">Dotación proyectada:</span> {proyecto.dotacionProyectada ?? "-"}</p>
+          <p>
+            <span className="font-semibold text-formatto-grafito">Venta:</span>{" "}
+            {proyecto.cotizacion
+              ? `${formatCLP(proyecto.cotizacion.totalCLP)}${proyecto.cotizacion.totalUF ? ` · ${proyecto.cotizacion.totalUF.toFixed(0)} UF` : ""}`
+              : "-"}
+          </p>
           <p><span className="font-semibold text-formatto-grafito">Fecha creación:</span> {formatDate(proyecto.creadoEn)}</p>
           <p><span className="font-semibold text-formatto-grafito">Observación:</span> {proyecto.observacion ?? "-"}</p>
         </div>
