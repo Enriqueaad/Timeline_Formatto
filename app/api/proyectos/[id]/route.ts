@@ -8,10 +8,13 @@ export const dynamic = "force-dynamic";
 const UpdateProyectoSchema = z.object({
   nombre: z.string().min(3).optional(),
   constructora: z.string().optional().nullable(),
-  torre: z.string().optional().nullable(),
-  finEstimado: z.string().optional().nullable(),
   observacion: z.string().optional().nullable(),
-  estado: z.enum(["ACTIVO", "PAUSADO", "TERMINADO"]).optional(),
+  estado: z.enum(["ACTIVO", "PAUSADO", "TERMINADO", "CANCELADO"]).optional(),
+  // Definiciones operativas (etapa 4)
+  fechaInicio: z.string().optional().nullable(),
+  finEstimado: z.string().optional().nullable(),
+  tasaInstalacion: z.number().positive().optional().nullable(),
+  dotacionProyectada: z.number().int().positive().optional().nullable(),
 });
 
 function parseDate(value?: string | null) {
@@ -29,10 +32,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       data: {
         ...(payload.nombre !== undefined ? { nombre: payload.nombre.trim() } : {}),
         ...(payload.constructora !== undefined ? { constructora: payload.constructora?.trim() || null } : {}),
-        ...(payload.torre !== undefined ? { torre: payload.torre?.trim() || null } : {}),
-        ...(payload.finEstimado !== undefined ? { finEstimado: parseDate(payload.finEstimado) } : {}),
         ...(payload.observacion !== undefined ? { observacion: payload.observacion?.trim() || null } : {}),
         ...(payload.estado !== undefined ? { estado: payload.estado } : {}),
+        ...(payload.fechaInicio !== undefined ? { fechaInicio: parseDate(payload.fechaInicio) } : {}),
+        ...(payload.finEstimado !== undefined ? { finEstimado: parseDate(payload.finEstimado) } : {}),
+        ...(payload.tasaInstalacion !== undefined ? { tasaInstalacion: payload.tasaInstalacion } : {}),
+        ...(payload.dotacionProyectada !== undefined ? { dotacionProyectada: payload.dotacionProyectada } : {}),
       },
     });
 
@@ -48,18 +53,22 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
-    const unidades = await prisma.unidad.findMany({ where: { proyectoId: id }, select: { id: true } });
-    const unidadIds = unidades.map((unidad) => unidad.id);
 
-    await prisma.$transaction(async (tx) => {
-      if (unidadIds.length > 0) {
-        await tx.historialEtapa.deleteMany({ where: { item: { unidadId: { in: unidadIds } } } });
-        await tx.itemInstalacion.deleteMany({ where: { unidadId: { in: unidadIds } } });
-        await tx.unidad.deleteMany({ where: { id: { in: unidadIds } } });
-      }
-      await tx.archivoExcel.deleteMany({ where: { proyectoId: id } });
-      await tx.proyecto.delete({ where: { id } });
-    });
+    // Borrado secuencial respetando FKs (hijos antes que padres). Sin transacción
+    // interactiva: el pooler de Supabase la rechaza (P2028) y un proyecto puede tener
+    // decenas de miles de recetas. deleteMany es idempotente, así que es re-ejecutable.
+    await prisma.recetaItem.deleteMany({ where: { item: { unidad: { proyectoId: id } } } });
+    await prisma.historialEtapa.deleteMany({ where: { item: { unidad: { proyectoId: id } } } });
+    await prisma.itemInstalacion.deleteMany({ where: { unidad: { proyectoId: id } } });
+    await prisma.unidad.deleteMany({ where: { proyectoId: id } });
+    await prisma.archivoExcel.deleteMany({ where: { proyectoId: id } });
+    await prisma.paradaRuta.deleteMany({ where: { proyectoId: id } });
+    await prisma.asignacionSupervisor.deleteMany({ where: { proyectoId: id } });
+    await prisma.evaluacion.deleteMany({ where: { proyectoId: id } });
+    await prisma.avanceObra.deleteMany({ where: { proyectoId: id } });
+    await prisma.subcontrato.deleteMany({ where: { proyectoId: id } });
+    await prisma.asignacionPersonal.deleteMany({ where: { proyectoId: id } });
+    await prisma.proyecto.delete({ where: { id } });
 
     return NextResponse.json({ ok: true });
   } catch (error) {

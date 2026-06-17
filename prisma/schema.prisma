@@ -71,9 +71,12 @@ model Proyecto {
   nombre        String
   constructora  String?
   estado        EstadoProyecto @default(ACTIVO)
-  finEstimado   DateTime?
-  torre         String?
-  observacion   String?
+  // ── Definiciones operativas (etapa 4 del onboarding) ──
+  fechaInicio        DateTime?
+  finEstimado        DateTime?
+  tasaInstalacion    Float?   // deptos por día (para sugerir fin estimado)
+  dotacionProyectada Int?     // N° personas proyectadas
+  observacion        String?
   creadoEn      DateTime       @default(now())
   actualizadoEn DateTime       @updatedAt
 

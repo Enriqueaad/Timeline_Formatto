@@ -11,8 +11,6 @@ import { FieldWrap, Input, Select, Textarea } from "@/components/ui/FormField";
 const EditSchema = z.object({
   nombre: z.string().min(3, "Nombre requerido"),
   constructora: z.string().optional(),
-  torre: z.string().optional(),
-  finEstimado: z.string().optional(),
   observacion: z.string().optional(),
   estado: z.enum(["ACTIVO", "PAUSADO", "TERMINADO", "CANCELADO"]),
 });
@@ -24,8 +22,6 @@ type ProyectoEditFormProps = {
     id: string;
     nombre: string;
     constructora: string | null;
-    torre: string | null;
-    finEstimado: string | null;
     observacion: string | null;
     estado: "ACTIVO" | "PAUSADO" | "TERMINADO" | "CANCELADO";
   };
@@ -40,8 +36,6 @@ export function ProyectoEditForm({ proyecto }: ProyectoEditFormProps) {
     defaultValues: {
       nombre: proyecto.nombre,
       constructora: proyecto.constructora ?? "",
-      torre: proyecto.torre ?? "",
-      finEstimado: proyecto.finEstimado ?? "",
       observacion: proyecto.observacion ?? "",
       estado: proyecto.estado,
     },
@@ -84,12 +78,6 @@ export function ProyectoEditForm({ proyecto }: ProyectoEditFormProps) {
         </FieldWrap>
         <FieldWrap label="Constructora">
           <Input {...form.register("constructora")} />
-        </FieldWrap>
-        <FieldWrap label="Torre">
-          <Input {...form.register("torre")} />
-        </FieldWrap>
-        <FieldWrap label="Fin estimado">
-          <Input type="date" {...form.register("finEstimado")} />
         </FieldWrap>
         <FieldWrap label="Observacion" className="col-span-2">
           <Textarea {...form.register("observacion")} />
