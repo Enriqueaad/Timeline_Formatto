@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { ClientOnly } from "@/components/ui/ClientOnly";
 
 type AvanceProyecto = {
   nombre: string;
@@ -47,6 +48,7 @@ export function DashboardCharts({ avances, costos }: DashboardChartsProps) {
           <div className="bg-white border border-border p-6 text-formatto-umber">Sin avances registrados.</div>
         ) : (
           <div className="h-80">
+            <ClientOnly fallback={<div className="w-full h-full" />}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={avances} margin={{ top: 10, right: 10, bottom: 55, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -56,6 +58,7 @@ export function DashboardCharts({ avances, costos }: DashboardChartsProps) {
                 <Bar dataKey="avance" name="% avance" fill="#D35132" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            </ClientOnly>
           </div>
         )}
       </section>
@@ -69,6 +72,7 @@ export function DashboardCharts({ avances, costos }: DashboardChartsProps) {
           <div className="bg-white border border-border p-6 text-formatto-umber">Sin costos para graficar.</div>
         ) : (
           <div className="h-80">
+            <ClientOnly fallback={<div className="w-full h-full" />}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={costos} margin={{ top: 10, right: 20, bottom: 10, left: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -78,6 +82,7 @@ export function DashboardCharts({ avances, costos }: DashboardChartsProps) {
                 <Line type="monotone" dataKey="costo" name="Costo total" stroke="#2B2B2B" strokeWidth={2} dot={{ fill: "#D35132" }} />
               </LineChart>
             </ResponsiveContainer>
+            </ClientOnly>
           </div>
         )}
       </section>

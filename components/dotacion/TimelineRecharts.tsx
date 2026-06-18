@@ -1,6 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ClientOnly } from "@/components/ui/ClientOnly";
 
 const COLORS = {
   formatto: "#2B2B2B",
@@ -27,6 +28,7 @@ export function TimelineRecharts({ datos }: TimelineRechartsProps) {
 
   return (
     <div className="bg-white border border-border p-4 rounded-none h-[520px]">
+      <ClientOnly fallback={<div className="w-full h-full" />}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart layout="vertical" data={datos} margin={{ left: 60, right: 24 }}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -38,6 +40,7 @@ export function TimelineRecharts({ datos }: TimelineRechartsProps) {
           <Bar dataKey="subcontrato" stackId="dotacion" fill={COLORS.subcontrato} name="SUBCONTRATO" />
         </BarChart>
       </ResponsiveContainer>
+      </ClientOnly>
     </div>
   );
 }

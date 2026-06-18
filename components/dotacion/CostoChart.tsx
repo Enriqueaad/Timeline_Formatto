@@ -1,6 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ClientOnly } from "@/components/ui/ClientOnly";
 
 const COLORS = {
   formatto: "#2B2B2B",
@@ -22,6 +23,7 @@ export function CostoChart({ datos }: CostoChartProps) {
 
   return (
     <div className="bg-white border border-border p-4 h-80">
+      <ClientOnly fallback={<div className="w-full h-full" />}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={datos}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -33,6 +35,7 @@ export function CostoChart({ datos }: CostoChartProps) {
           <Bar dataKey="subcontrato" stackId="costos" fill={COLORS.subcontrato} name="SUBCONTRATO" />
         </BarChart>
       </ResponsiveContainer>
+      </ClientOnly>
     </div>
   );
 }

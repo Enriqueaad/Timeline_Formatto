@@ -44,23 +44,12 @@ export function avance(items: ItemConEtapa[]) {
   return Math.round((completados / items.length) * 100);
 }
 
+// Filtra unidades por el tipo de mueble de sus items (campo confiable tipoMueble).
+// Una unidad puede tener items de varios tipos (cocina + closet + piernas), por eso
+// se filtra por la presencia de items del tipo pedido, no por el campo unidad.tipo.
 export function tipoFiltroToWhere(tipo?: string): Prisma.UnidadWhereInput {
-  if (tipo === "COCINA") return { tipo: { startsWith: "CO_" } };
-  if (tipo === "PIERNAS") {
-    return {
-      OR: [
-        { tipo: "PIERNAS" },
-        { items: { some: { subconjunto: { equals: "PIERNAS" } } } },
-      ],
-    };
-  }
-  if (tipo === "CLOSET") {
-    return {
-      AND: [
-        { NOT: { tipo: { startsWith: "CO_" } } },
-        { NOT: { tipo: "PIERNAS" } },
-      ],
-    };
-  }
+  if (tipo === "COCINA") return { items: { some: { tipoMueble: "COCINA" } } };
+  if (tipo === "CLOSET") return { items: { some: { tipoMueble: { in: ["CLOSET_INTERIOR", "QUINCALLERIA"] } } } };
+  if (tipo === "PIERNAS") return { items: { some: { tipoMueble: "PIERNAS" } } };
   return {};
 }

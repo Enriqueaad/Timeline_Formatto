@@ -1,6 +1,7 @@
 "use client";
 
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ClientOnly } from "@/components/ui/ClientOnly";
 
 const COLORS = {
   formatto: "#2B2B2B",
@@ -18,6 +19,7 @@ export function AvanceChart({ datos }: AvanceChartProps) {
 
   return (
     <div className="bg-white border border-border p-4 h-80">
+      <ClientOnly fallback={<div className="w-full h-full" />}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={datos}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -28,6 +30,7 @@ export function AvanceChart({ datos }: AvanceChartProps) {
           <Line type="monotone" dataKey="porcentaje" stroke={COLORS.formatto} dot={{ fill: COLORS.rojo }} />
         </LineChart>
       </ResponsiveContainer>
+      </ClientOnly>
     </div>
   );
 }

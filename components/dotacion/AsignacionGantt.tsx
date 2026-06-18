@@ -1,6 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ClientOnly } from "@/components/ui/ClientOnly";
 
 const COLORS = {
   formatto: "#2B2B2B",
@@ -42,6 +43,7 @@ export function AsignacionGantt({ asignaciones }: AsignacionGanttProps) {
 
   return (
     <div className="bg-white border border-border p-4 h-80">
+      <ClientOnly fallback={<div className="w-full h-full" />}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart layout="vertical" data={data} margin={{ left: 24, right: 24 }}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -55,6 +57,7 @@ export function AsignacionGantt({ asignaciones }: AsignacionGanttProps) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+      </ClientOnly>
     </div>
   );
 }

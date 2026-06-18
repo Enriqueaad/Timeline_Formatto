@@ -71,11 +71,17 @@ export async function persistirCargaExcel(
         const torre = resolverTorre(unidad.torre);
         const existente = await tx.unidad.findFirst({
           where: { proyectoId, piso: unidad.piso, dpto: unidad.dpto, torre },
-          select: { id: true },
+          select: { id: true, tipo: true },
         });
 
         const savedUnidad = existente
-          ? await tx.unidad.update({ where: { id: existente.id }, data: { tipo: unidad.tipo ?? null, torre }, select: { id: true } })
+          ? await tx.unidad.update({
+              where: { id: existente.id },
+              // Preservar el tipo original (p.ej. la tipología de cocina CO_x); no pisarlo
+              // con el tipo del archivo que enriquece (closet/piernas).
+              data: { tipo: existente.tipo ?? unidad.tipo ?? null, torre },
+              select: { id: true },
+            })
           : await tx.unidad.create({ data: { proyectoId, piso: unidad.piso, dpto: unidad.dpto, torre, tipo: unidad.tipo ?? null }, select: { id: true } });
 
         unidadesNuevas += existente ? 0 : 1;
