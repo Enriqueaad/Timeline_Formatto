@@ -204,6 +204,7 @@ model ItemInstalacion {
   descripcion   String?
   subconjunto   String?
   tipoMueble    TipoMueble       @default(OTRO)
+  fichaCodigo   String?          // código de ficha (Cxx) para enlazar receta de closet/piernas
   cantidad      Int              @default(1)
   costo         Float?
   etapa         EtapaInstalacion @default(PEDIDO)

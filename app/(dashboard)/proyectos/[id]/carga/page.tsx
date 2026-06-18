@@ -1,4 +1,5 @@
-﻿import { notFound } from "next/navigation";
+﻿import Link from "next/link";
+import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { prisma } from "@/lib/prisma";
 import { ProyectoCargaForm } from "@/components/proyectos/ProyectoCargaForm";
@@ -24,7 +25,16 @@ export default async function ProyectoCargaPage({ params }: { params: Promise<{ 
 
   return (
     <>
-      <PageHeader eyebrow="Proyectos" title="Cargar Excel" subtitle="Carga, agrega o reemplaza archivos del proyecto." />
+      <PageHeader
+        eyebrow="Proyectos"
+        title="Cargar Excel"
+        subtitle="Carga, agrega o reemplaza archivos del proyecto."
+        actions={
+          <Link href={`/proyectos/${proyecto.id}/fichas`} className="inline-flex rounded-sm bg-white text-formatto-grafito border border-border px-4 py-2 text-2xs font-semibold uppercase tracking-widest">
+            Cargar fichas (recetas closet/piernas)
+          </Link>
+        }
+      />
       <ProyectoCargaForm proyectoId={proyecto.id} proyectoNombre={proyecto.nombre} tiposExistentes={tiposExistentes} />
     </>
   );

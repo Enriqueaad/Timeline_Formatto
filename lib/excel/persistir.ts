@@ -94,6 +94,7 @@ export async function persistirCargaExcel(
             descripcion: item.descripcion ?? null,
             subconjunto: item.subconjunto ?? null,
             tipoMueble: item.tipoMueble ?? "OTRO",
+            fichaCodigo: item.fichaCodigo ?? null,
             cantidad: item.cantidad,
             costo: item.costo ?? null,
           })),
