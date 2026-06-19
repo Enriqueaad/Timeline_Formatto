@@ -1,6 +1,10 @@
 import pg from "pg";
 import fs from "node:fs";
 import path from "node:path";
+import { config } from "dotenv";
+
+config({ path: ".env" });
+config({ path: ".env.local", override: false });
 
 const { Pool } = pg;
 
@@ -10,12 +14,15 @@ const DEST = path.join(
 
 const TABLES = ["configuracion", "obras", "personal", "subcontratos"];
 
+// Credenciales desde variables de entorno (.env.local), nunca hardcodeadas.
+const connectionString = (process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "").replace(/[?&]sslmode=[^&]*/g, "");
+if (!connectionString) {
+  console.error("Falta DIRECT_URL o DATABASE_URL en el entorno.");
+  process.exit(1);
+}
+
 const pool = new Pool({
-  host: "aws-1-sa-east-1.pooler.supabase.com",
-  port: 5432,
-  database: "postgres",
-  user: "postgres.pzpfgcdtjgavvzbutxoh",
-  password: "lVrInu2j12hOGGIE",
+  connectionString,
   ssl: { rejectUnauthorized: false },
 });
 
