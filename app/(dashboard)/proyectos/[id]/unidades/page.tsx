@@ -34,9 +34,6 @@ type ProyectoUnidadRef = {
 
 type ItemUnidad = {
   etapa: EtapaInstalacion;
-  sku: string | null;
-  descripcion: string | null;
-  cantidad: number;
 };
 
 type UnidadRow = {
@@ -97,11 +94,14 @@ export default async function ProyectoUnidadesPage({
       ...tipoFiltroToWhere(tipo),
     };
 
+    // Solo se carga `etapa` de cada item (un enum liviano) para contar/derivar la etapa
+    // dominante. Cargar sku/descripcion/cantidad de los ~10k items satura la memoria del
+    // worker SSR y lo crashea; los datos de acta se piden aparte solo para los completados.
     const unidades = await prisma.unidad.findMany({
       where,
       orderBy: [{ piso: "asc" }, { dpto: "asc" }],
       include: {
-        items: { select: { etapa: true, sku: true, descripcion: true, cantidad: true } },
+        items: { select: { etapa: true } },
       },
     });
 
@@ -111,16 +111,22 @@ export default async function ProyectoUnidadesPage({
     const completados = allItems.filter((item: ItemUnidad) => item.etapa === "ENTREGA_CONFORME").length;
     const avanceGeneral = avance(allItems);
     const pisos = Array.from(new Set(proyectoUnidades.map((unidad: ProyectoUnidadRef) => unidad.piso))).filter(Boolean);
-    const unidadesCompletadas = unidadesTyped
-      .map((unidad: UnidadRow) => ({
-        piso: unidad.piso,
-        dpto: unidad.dpto,
-        tipo: unidad.tipo,
-        items: unidad.items
-          .filter((item: ItemUnidad) => item.etapa === "ENTREGA_CONFORME")
-          .map((item: ItemUnidad) => ({ sku: item.sku, descripcion: item.descripcion, cantidad: item.cantidad })),
-      }))
-      .filter((unidad: UnidadActa) => unidad.items.length > 0);
+
+    // Acta de conformidad: solo items ya entregados (normalmente pocos), con su detalle.
+    const itemsEntregados = completados > 0
+      ? await prisma.itemInstalacion.findMany({
+          where: { etapa: "ENTREGA_CONFORME", unidad: { proyectoId: id, ...(piso ? { piso } : {}), ...tipoFiltroToWhere(tipo) } },
+          select: { sku: true, descripcion: true, cantidad: true, unidad: { select: { piso: true, dpto: true, tipo: true } } },
+        })
+      : [];
+    const actaMap = new Map<string, UnidadActa>();
+    for (const it of itemsEntregados) {
+      const key = `${it.unidad.piso}::${it.unidad.dpto}`;
+      const acc = actaMap.get(key) ?? { piso: it.unidad.piso, dpto: it.unidad.dpto, tipo: it.unidad.tipo, items: [] };
+      acc.items.push({ sku: it.sku, descripcion: it.descripcion, cantidad: it.cantidad });
+      actaMap.set(key, acc);
+    }
+    const unidadesCompletadas = Array.from(actaMap.values());
 
     return (
       <>
