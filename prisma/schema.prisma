@@ -166,26 +166,43 @@ enum TipoArchivo {
 // ─── UNIDADES / DEPARTAMENTOS ──────────────────────────────────────────────
 
 model Unidad {
-  id         String       @id @default(cuid())
-  proyectoId String
-  proyecto   Proyecto     @relation(fields: [proyectoId], references: [id])
-  piso       String
-  dpto       String
-  torre      String?
-  tipo       String?
-  estado     EstadoUnidad @default(PENDIENTE)
-  creadoEn   DateTime     @default(now())
+  id           String       @id @default(cuid())
+  proyectoId   String
+  proyecto     Proyecto     @relation(fields: [proyectoId], references: [id])
+  piso         String
+  dpto         String
+  torre        String?
+  tipo         String?
+  estado       EstadoAvance @default(PENDIENTE) // derivado de los EstadoMueble salvo override
+  estadoManual Boolean      @default(false)     // true = el estado del depto fue forzado a mano
+  creadoEn     DateTime     @default(now())
 
-  items ItemInstalacion[]
+  items         ItemInstalacion[]
+  estadosMueble EstadoMueble[]
 
   @@unique([proyectoId, piso, dpto, torre])
 }
 
-enum EstadoUnidad {
+// Estado de marcado rápido (terreno). Reemplaza el pipeline EtapaInstalacion en la vista de
+// unidades. Extensible: agregar un estado = 1 valor aquí + 1 entrada en lib/instalacion/estados.ts.
+enum EstadoAvance {
   PENDIENTE
   EN_PROCESO
-  COMPLETADA
-  CON_OBSERVACION
+  COMPLETADO
+  SIN_CANCHA
+}
+
+// Estado por tipo de mueble dentro de un depto (cocina, closet, piernas, quincallería).
+// El nivel donde el instalador marca. El estado del depto (Unidad.estado) se deriva de estos.
+model EstadoMueble {
+  id            String       @id @default(cuid())
+  unidadId      String
+  unidad        Unidad       @relation(fields: [unidadId], references: [id])
+  tipoMueble    TipoMueble
+  estado        EstadoAvance @default(PENDIENTE)
+  actualizadoEn DateTime     @updatedAt
+
+  @@unique([unidadId, tipoMueble])
 }
 
 enum TipoMueble {
